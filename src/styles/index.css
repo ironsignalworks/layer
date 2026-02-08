@@ -1,0 +1,108 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+.preset-zine {
+  filter: grayscale(1) contrast(1.35);
+}
+
+.preset-acid {
+  filter: saturate(3.2) contrast(1.6) brightness(1.25) hue-rotate(18deg);
+}
+
+.preset-retro {
+  filter: saturate(0.7) contrast(0.9) sepia(0.2);
+}
+
+.preset-mono {
+  filter: grayscale(1) contrast(1.05);
+}
+
+.preset-neon {
+  filter: saturate(2.4) contrast(1.45) brightness(1.2);
+  box-shadow:
+    0 0 12px rgba(255, 0, 255, 0.35),
+    0 0 28px rgba(0, 255, 255, 0.3),
+    0 0 64px rgba(0, 255, 255, 0.18);
+}
+
+.preset-paper {
+  filter: contrast(0.9) brightness(1.05);
+}
+
+.canvas-preset-zine {
+  filter: grayscale(1) contrast(1.3);
+}
+
+.canvas-preset-acid {
+  filter: saturate(3.4) contrast(1.7) brightness(1.2) hue-rotate(16deg);
+}
+
+.canvas-preset-retro {
+  filter: saturate(0.7) contrast(0.9) sepia(0.25);
+}
+
+.canvas-preset-mono {
+  filter: grayscale(1) contrast(1.05);
+}
+
+.canvas-preset-neon {
+  filter: saturate(2.6) contrast(1.5) brightness(1.2);
+}
+
+.canvas-preset-paper {
+  filter: contrast(0.9) brightness(1.05);
+}
+
+.canvas-preset-zine::after,
+.canvas-preset-acid::after,
+.canvas-preset-retro::after,
+.canvas-preset-mono::after,
+.canvas-preset-neon::after,
+.canvas-preset-paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.12;
+}
+
+.canvas-preset-paper::after {
+  background-image: radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+  opacity: 0.08;
+}
+
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  [data-role="print-canvas"] {
+    display: block !important;
+  }
+  [data-role="canvas"] {
+    display: none !important;
+  }
+  .canvas-bg {
+    display: none !important;
+  }
+  @page {
+    margin: 0;
+  }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #0a0a0a !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  [data-role="print-canvas"], [data-role="print-canvas"] * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
