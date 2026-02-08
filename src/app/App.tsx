@@ -3,7 +3,7 @@ import { LeftSidebar } from "./components/left-sidebar";
 import { RightSidebar } from "./components/right-sidebar";
 import { WorldCanvas } from "./components/world-canvas";
 import { NodeData } from "./components/world-node";
-import { Play, Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Info, Frame, Download, Crop, Link2 } from "lucide-react";
+import { Play, Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Info, Frame, Download, Crop, Link2, PanelLeft, SlidersHorizontal, X } from "lucide-react";
 
 const STORAGE_KEY = "fanzinator:canvas-editor:v2";
 const RESET_KEY = "fanzinator:force-reset:v1";
@@ -80,6 +80,9 @@ export default function App() {
   const [isExportPreviewLoading, setIsExportPreviewLoading] = useState(false);
   const [exportEstimatedBytes, setExportEstimatedBytes] = useState<number | null>(null);
   const [isFileDragActive, setIsFileDragActive] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [showMobileLeftSidebar, setShowMobileLeftSidebar] = useState(false);
+  const [showMobileRightSidebar, setShowMobileRightSidebar] = useState(false);
   const dragDepthRef = useRef(0);
   const clampZoom = (value: number) => Math.min(200, Math.max(50, Math.round(value)));
   const zoomToCanvasScale = (zoom: number) =>
@@ -90,6 +93,23 @@ export default function App() {
 
   const hasDroppedFiles = (dataTransfer: DataTransfer | null) =>
     Array.from(dataTransfer?.types ?? []).includes("Files");
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const updateViewport = () => {
+      const isMobile = mediaQuery.matches;
+      setIsMobileViewport(isMobile);
+      if (!isMobile) {
+        setShowMobileLeftSidebar(false);
+        setShowMobileRightSidebar(false);
+      }
+    };
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => {
+      mediaQuery.removeEventListener("change", updateViewport);
+    };
+  }, []);
 
   useEffect(() => {
     const needsReset = localStorage.getItem(RESET_KEY) !== "done";
@@ -1249,7 +1269,7 @@ export default function App() {
   return (
     <div 
       data-printing={isPrinting ? "true" : "false"}
-      className="h-screen w-full flex flex-col dark overflow-hidden bg-[#0a0a0a]"
+      className="h-[100dvh] w-full flex flex-col dark overflow-hidden bg-[#0a0a0a]"
       onDragEnter={(event) => {
         if (!hasDroppedFiles(event.dataTransfer)) return;
         event.preventDefault();
@@ -1289,16 +1309,41 @@ export default function App() {
         </div>
       )}
       {!isPlaying && (
-      <div className="print-hide flex-shrink-0 h-16 px-8 flex items-center justify-between border-b border-white/5 bg-[#0a0a0a]">
-        <div className="flex flex-col items-start gap-0 leading-tight">
-          <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
-            Fanzinator
-          </span>
-          <span className="fanzinator-subtitle text-[10px] font-light text-[#fafafa]">
-            DIY graphic studio
-          </span>
+      <div className="print-hide flex-shrink-0 min-h-16 px-3 lg:px-8 py-2 lg:py-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 border-b border-white/5 bg-[#0a0a0a]">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-0 leading-tight">
+            <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
+              Fanzinator
+            </span>
+            <span className="fanzinator-subtitle text-[10px] font-light text-[#fafafa]">
+              DIY graphic studio
+            </span>
+          </div>
+          <div className="lg:hidden flex items-center gap-2">
+            <button
+              onClick={() => {
+                setShowMobileLeftSidebar((prev) => !prev);
+                setShowMobileRightSidebar(false);
+              }}
+              className="h-10 w-10 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+              aria-label="Toggle layers panel"
+            >
+              <PanelLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileRightSidebar((prev) => !prev);
+                setShowMobileLeftSidebar(false);
+              }}
+              className="h-10 w-10 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+              aria-label="Toggle inspector panel"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-[#737373]">
+        <div className="w-full lg:w-auto overflow-x-auto">
+          <div className="flex items-center gap-2 lg:gap-3 text-xs text-[#737373] min-w-max pb-1 lg:pb-0">
           <button
             onClick={handleUndo}
             disabled={historyPast.length === 0}
@@ -1449,6 +1494,7 @@ export default function App() {
             <Info className="w-3 h-3" />
             About
           </button>
+          </div>
         </div>
       </div>
       )}
@@ -1457,7 +1503,7 @@ export default function App() {
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar */}
         {!isPlaying && (
-        <div className="print-hide flex-shrink-0 basis-[16rem] min-w-[16rem] max-w-[16rem] overflow-hidden">
+        <div className="print-hide hidden lg:block flex-shrink-0 basis-[16rem] min-w-[16rem] max-w-[16rem] overflow-hidden">
           <LeftSidebar
             isCollapsed={isLeftCollapsed}
             onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
@@ -1531,7 +1577,7 @@ export default function App() {
 
           {/* Bottom Controls - Integrated */}
           {!isPlaying && (
-          <div className="print-hide flex-shrink-0 border-t border-white/5 bg-[#0a0a0a] px-8 py-4 flex flex-wrap items-center justify-between gap-y-4 relative">
+          <div className="print-hide flex-shrink-0 border-t border-white/5 bg-[#0a0a0a] px-3 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-y-4 relative">
             <div className="flex flex-wrap items-center gap-2 max-w-full">
               <button
                 onClick={handleAddNode}
@@ -1601,7 +1647,7 @@ export default function App() {
 
         {/* Right Sidebar */}
         {!isPlaying && (
-        <div className="print-hide flex-shrink-0 h-full min-h-0 basis-[20rem] min-w-[20rem] max-w-[20rem] overflow-hidden">
+        <div className="print-hide hidden lg:block flex-shrink-0 h-full min-h-0 basis-[20rem] min-w-[20rem] max-w-[20rem] overflow-hidden">
           <RightSidebar
             selectedNode={selectedNode}
             onUpdateNode={updateNode}
@@ -1621,6 +1667,105 @@ export default function App() {
         </div>
         )}
       </div>
+
+      {!isPlaying && isMobileViewport && showMobileLeftSidebar && (
+        <div className="print-hide fixed inset-0 z-[80] lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+            onClick={() => setShowMobileLeftSidebar(false)}
+            aria-label="Close layers panel"
+          />
+          <div className="absolute left-0 top-0 h-[100dvh] w-[90vw] max-w-[22rem] bg-[#0a0a0a] border-r border-white/10 flex flex-col">
+            <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-wider text-[#737373]">Layers</div>
+              <button
+                type="button"
+                onClick={() => setShowMobileLeftSidebar(false)}
+                className="h-8 w-8 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close layers panel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <LeftSidebar
+                isCollapsed={false}
+                onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
+                currentCanvasId={currentCanvas?.id ?? ""}
+                canvases={canvases.map((canvas) => ({ id: canvas.id, name: canvas.name }))}
+                onCanvasChange={(canvasId) => {
+                  if (!canvasId) return;
+                  setCurrentCanvasId(canvasId);
+                  setSelectedNodeIds([]);
+                }}
+                nodes={(currentCanvas?.nodes ?? []).map((node) => ({
+                  id: node.id,
+                  title: node.title,
+                  type: node.type,
+                  visible: node.visible !== false,
+                }))}
+                onReorderNodes={handleReorderNodes}
+                onToggleLayerVisibility={(id, nextVisible) =>
+                  updateNode(id, { visible: nextVisible })
+                }
+                canvasBackground={currentCanvas?.backgroundColor ?? "#0a0a0a"}
+                onCanvasBackgroundChange={updateCanvasBackground}
+                canvasPreset={currentCanvas?.canvasPreset ?? "none"}
+                onCanvasPresetChange={updateCanvasPreset}
+                selectedLayerId={selectedNodeIds[0] ?? ""}
+                onSelectLayer={(id) => setSelectedNodeIds([id])}
+                onCreateCanvas={handleCreateCanvas}
+                onRenameCanvas={handleRenameCanvas}
+                onDeleteCanvas={handleDeleteCanvas}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isPlaying && isMobileViewport && showMobileRightSidebar && (
+        <div className="print-hide fixed inset-0 z-[80] lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+            onClick={() => setShowMobileRightSidebar(false)}
+            aria-label="Close inspector panel"
+          />
+          <div className="absolute right-0 top-0 h-[100dvh] w-[90vw] max-w-[24rem] bg-[#0a0a0a] border-l border-white/10 flex flex-col">
+            <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-wider text-[#737373]">Inspector</div>
+              <button
+                type="button"
+                onClick={() => setShowMobileRightSidebar(false)}
+                className="h-8 w-8 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close inspector panel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <RightSidebar
+                selectedNode={selectedNode}
+                onUpdateNode={updateNode}
+                onDeleteNode={() => handleDeleteNodes(selectedNodeIds)}
+                onDuplicateNode={() => handleDuplicateNodes(selectedNodeIds)}
+                onImportFile={handleHeaderUpload}
+                onOpenPreview={() => {
+                  if (selectedNode) {
+                    setExpandedNodeId(selectedNode.id);
+                    setShowMobileRightSidebar(false);
+                  }
+                }}
+                onUpdateOpacity={(opacity) => {
+                  if (!selectedNode) return;
+                  updateNode(selectedNode.id, { opacity });
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {expandedNode && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">

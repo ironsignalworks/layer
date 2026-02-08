@@ -57,7 +57,7 @@ export function LeftSidebar({
   }, [currentCanvas?.id]);
   if (isCollapsed) {
     return (
-      <div className="h-full basis-[3.5rem] min-w-[3.5rem] max-w-[3.5rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 overflow-hidden">
+      <div className="h-full w-full lg:basis-[3.5rem] lg:min-w-[3.5rem] lg:max-w-[3.5rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 overflow-hidden">
         <button
           onClick={onToggleCollapse}
           className="p-2 hover:bg-white/5 transition-colors rounded-none"
@@ -69,7 +69,7 @@ export function LeftSidebar({
   }
 
   return (
-    <div className="h-full basis-[16rem] min-w-[16rem] max-w-[16rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col overflow-hidden">
+    <div className="h-full w-full lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col overflow-hidden">
       {/* Header spacer */}
       <div className="flex-shrink-0 h-0" />
 

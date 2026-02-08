@@ -141,7 +141,7 @@ export function RightSidebar({
 }: RightSidebarProps) {
   if (!selectedNode) {
     return (
-      <div className="w-80 h-full bg-[#0a0a0a] border-l border-white/5 flex items-center justify-center">
+      <div className="w-full lg:w-80 h-full bg-[#0a0a0a] border-l border-white/5 flex items-center justify-center">
         <div className="text-center text-[#737373] text-sm font-light px-8">
           <Eye className="w-6 h-6 mx-auto mb-3 opacity-30" />
           No layer selected
@@ -399,7 +399,7 @@ export function RightSidebar({
       : "");
 
   return (
-      <div className="w-80 h-full min-h-0 bg-[#0a0a0a] border-l border-white/5 flex flex-col overflow-hidden">
+      <div className="w-full lg:w-80 h-full min-h-0 bg-[#0a0a0a] border-l border-white/5 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 gap-3">
           <div className="min-w-0">
             <div className="text-[10px] text-[#737373] uppercase tracking-wider">Inspector</div>
