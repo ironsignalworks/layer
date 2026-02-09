@@ -23,6 +23,8 @@ interface WorldCanvasProps {
   printFrame: { x: number; y: number; width: number; height: number; enabled: boolean };
   onPrintFrameChange: (next: { x: number; y: number; width: number; height: number; enabled: boolean }) => void;
   defaultPrintArea: { x: number; y: number; width: number; height: number };
+  printOrientation: "portrait" | "landscape";
+  onTogglePrintOrientation: () => void;
   showPrintArea: boolean;
   backgroundColor: string;
   canvasPreset: "zine" | "acid" | "retro" | "mono" | "neon" | "paper" | "none";
@@ -51,6 +53,8 @@ export function WorldCanvas({
   printFrame,
   onPrintFrameChange,
   defaultPrintArea,
+  printOrientation,
+  onTogglePrintOrientation,
   showPrintArea,
   backgroundColor,
   canvasPreset,
@@ -552,6 +556,15 @@ export function WorldCanvas({
 
       {(showPrintArea || printFrame.enabled) && (
         <div className="absolute inset-0 pointer-events-none z-50">
+          <div className="absolute top-4 right-4 pointer-events-auto">
+            <button
+              type="button"
+              onClick={onTogglePrintOrientation}
+              className="h-8 px-2 rounded-none border border-white/25 bg-black/55 text-[10px] uppercase tracking-wider text-white/85 hover:border-white/45 hover:text-white transition-colors"
+            >
+              Page: {printOrientation === "landscape" ? "Landscape" : "Portrait"}
+            </button>
+          </div>
           <div
             className="absolute inset-0"
             style={{
@@ -573,7 +586,7 @@ export function WorldCanvas({
                 }}
               >
                 <div className="absolute top-2 left-2 px-2 py-1 border border-white/30 bg-black/45 text-[10px] uppercase tracking-wider text-white/85 pointer-events-none">
-                  PDF Page Area (8.5 x 11)
+                  PDF Page Area ({printOrientation === "landscape" ? "11 x 8.5" : "8.5 x 11"})
                 </div>
               </div>
             )}

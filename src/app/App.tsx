@@ -3,15 +3,17 @@ import { LeftSidebar } from "./components/left-sidebar";
 import { RightSidebar } from "./components/right-sidebar";
 import { WorldCanvas } from "./components/world-canvas";
 import { NodeData } from "./components/world-node";
-import { Play, Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Info, Frame, Download, Crop, Link2, PanelLeft, SlidersHorizontal, X } from "lucide-react";
+import { Play, Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Info, Frame, Download, Crop, Link2, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown } from "lucide-react";
 
 const STORAGE_KEY = "fanzinator:canvas-editor:v2";
 const RESET_KEY = "fanzinator:force-reset:v1";
 const SCHEMA_VERSION = 1;
 const HISTORY_LIMIT = 50;
 // 8.5x11 portrait at 96dpi-equivalent working units.
-const DEFAULT_PRINT_AREA = { x: 0, y: 0, width: 816, height: 1056 };
+const DEFAULT_PRINT_AREA_PORTRAIT = { x: 0, y: 0, width: 816, height: 1056 };
+const DEFAULT_PRINT_AREA_LANDSCAPE = { x: 0, y: 0, width: 1056, height: 816 };
 const LOW_ZOOM_EXPONENT = 2.321928094887362;
+type PrintOrientation = "portrait" | "landscape";
 
 type Canvas = {
   id: string;
@@ -23,6 +25,7 @@ type Canvas = {
   snapStrength: number;
   canvasPreset: "zine" | "acid" | "retro" | "mono" | "neon" | "paper" | "none";
   backgroundColor: string;
+  printOrientation: PrintOrientation;
 };
 
 type Snapshot = {
@@ -31,6 +34,14 @@ type Snapshot = {
 };
 
 type ExportFormat = "png" | "jpeg" | "webp" | "svg" | "ico";
+type VisualPreset = "zine" | "acid" | "retro" | "mono" | "neon" | "paper";
+type FilterOp =
+  | { kind: "grayscale"; value: number }
+  | { kind: "contrast"; value: number }
+  | { kind: "brightness"; value: number }
+  | { kind: "saturate"; value: number }
+  | { kind: "sepia"; value: number }
+  | { kind: "hueRotate"; value: number };
 
 
 const initialCanvases: Canvas[] = [
@@ -44,8 +55,241 @@ const initialCanvases: Canvas[] = [
     snapStrength: 1,
     canvasPreset: "none",
     backgroundColor: "#0a0a0a",
+    printOrientation: "portrait",
   },
 ];
+
+const NODE_PRESET_FILTERS: Record<VisualPreset, string> = {
+  zine: "grayscale(1) contrast(1.35)",
+  acid: "saturate(3.2) contrast(1.6) brightness(1.25) hue-rotate(18deg)",
+  retro: "saturate(0.7) contrast(0.9) sepia(0.2)",
+  mono: "grayscale(1) contrast(1.05)",
+  neon: "saturate(2.4) contrast(1.45) brightness(1.2)",
+  paper: "contrast(0.9) brightness(1.05)",
+};
+
+const CANVAS_PRESET_FILTERS: Record<VisualPreset, string> = {
+  zine: "grayscale(1) contrast(1.3)",
+  acid: "saturate(3.4) contrast(1.7) brightness(1.2) hue-rotate(16deg)",
+  retro: "saturate(0.7) contrast(0.9) sepia(0.25)",
+  mono: "grayscale(1) contrast(1.05)",
+  neon: "saturate(2.6) contrast(1.5) brightness(1.2)",
+  paper: "contrast(0.9) brightness(1.05)",
+};
+
+const NODE_PRESET_OPS: Record<VisualPreset, FilterOp[]> = {
+  zine: [
+    { kind: "grayscale", value: 1 },
+    { kind: "contrast", value: 1.35 },
+  ],
+  acid: [
+    { kind: "saturate", value: 3.2 },
+    { kind: "contrast", value: 1.6 },
+    { kind: "brightness", value: 1.25 },
+    { kind: "hueRotate", value: 18 },
+  ],
+  retro: [
+    { kind: "saturate", value: 0.7 },
+    { kind: "contrast", value: 0.9 },
+    { kind: "sepia", value: 0.2 },
+  ],
+  mono: [
+    { kind: "grayscale", value: 1 },
+    { kind: "contrast", value: 1.05 },
+  ],
+  neon: [
+    { kind: "saturate", value: 2.4 },
+    { kind: "contrast", value: 1.45 },
+    { kind: "brightness", value: 1.2 },
+  ],
+  paper: [
+    { kind: "contrast", value: 0.9 },
+    { kind: "brightness", value: 1.05 },
+  ],
+};
+
+const CANVAS_PRESET_OPS: Record<VisualPreset, FilterOp[]> = {
+  zine: [
+    { kind: "grayscale", value: 1 },
+    { kind: "contrast", value: 1.3 },
+  ],
+  acid: [
+    { kind: "saturate", value: 3.4 },
+    { kind: "contrast", value: 1.7 },
+    { kind: "brightness", value: 1.2 },
+    { kind: "hueRotate", value: 16 },
+  ],
+  retro: [
+    { kind: "saturate", value: 0.7 },
+    { kind: "contrast", value: 0.9 },
+    { kind: "sepia", value: 0.25 },
+  ],
+  mono: [
+    { kind: "grayscale", value: 1 },
+    { kind: "contrast", value: 1.05 },
+  ],
+  neon: [
+    { kind: "saturate", value: 2.6 },
+    { kind: "contrast", value: 1.5 },
+    { kind: "brightness", value: 1.2 },
+  ],
+  paper: [
+    { kind: "contrast", value: 0.9 },
+    { kind: "brightness", value: 1.05 },
+  ],
+};
+
+const composeCssFilters = (filters: Array<string | undefined | null>) => {
+  const composed = filters
+    .map((value) => (value ?? "").trim())
+    .filter((value) => value.length > 0 && value !== "none")
+    .join(" ");
+  return composed.length > 0 ? composed : "none";
+};
+
+const resolveNodePresetFilter = (preset?: NodeData["preset"]) =>
+  preset ? NODE_PRESET_FILTERS[preset] : "none";
+
+const resolveCanvasPresetFilter = (preset?: Canvas["canvasPreset"]) =>
+  preset && preset !== "none" ? CANVAS_PRESET_FILTERS[preset] : "none";
+
+const resolveNodePresetOps = (preset?: NodeData["preset"]) =>
+  preset ? NODE_PRESET_OPS[preset] : [];
+
+const resolveCanvasPresetOps = (preset?: Canvas["canvasPreset"]) =>
+  preset && preset !== "none" ? CANVAS_PRESET_OPS[preset] : [];
+
+const resolvePrintArea = (orientation: PrintOrientation) =>
+  orientation === "landscape" ? DEFAULT_PRINT_AREA_LANDSCAPE : DEFAULT_PRINT_AREA_PORTRAIT;
+
+const clamp255 = (value: number) => Math.max(0, Math.min(255, value));
+
+const rgbToHsl = (r: number, g: number, b: number) => {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d !== 0) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case rn:
+        h = (gn - bn) / d + (gn < bn ? 6 : 0);
+        break;
+      case gn:
+        h = (bn - rn) / d + 2;
+        break;
+      default:
+        h = (rn - gn) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+  return { h, s, l };
+};
+
+const hueToRgb = (p: number, q: number, t: number) => {
+  let next = t;
+  if (next < 0) next += 1;
+  if (next > 1) next -= 1;
+  if (next < 1 / 6) return p + (q - p) * 6 * next;
+  if (next < 1 / 2) return q;
+  if (next < 2 / 3) return p + (q - p) * (2 / 3 - next) * 6;
+  return p;
+};
+
+const hslToRgb = (h: number, s: number, l: number) => {
+  if (s === 0) {
+    const v = Math.round(l * 255);
+    return { r: v, g: v, b: v };
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return {
+    r: Math.round(hueToRgb(p, q, h + 1 / 3) * 255),
+    g: Math.round(hueToRgb(p, q, h) * 255),
+    b: Math.round(hueToRgb(p, q, h - 1 / 3) * 255),
+  };
+};
+
+const applyFilterOpsToImageData = (
+  imageData: ImageData,
+  ops: FilterOp[],
+  invert: boolean
+) => {
+  const data = imageData.data;
+  if (ops.length === 0 && !invert) return imageData;
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i];
+    let g = data[i + 1];
+    let b = data[i + 2];
+    if (data[i + 3] === 0) continue;
+    if (invert) {
+      r = 255 - r;
+      g = 255 - g;
+      b = 255 - b;
+    }
+    for (const op of ops) {
+      if (op.kind === "grayscale") {
+        const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        r = y * op.value + r * (1 - op.value);
+        g = y * op.value + g * (1 - op.value);
+        b = y * op.value + b * (1 - op.value);
+      } else if (op.kind === "contrast") {
+        r = (r - 128) * op.value + 128;
+        g = (g - 128) * op.value + 128;
+        b = (b - 128) * op.value + 128;
+      } else if (op.kind === "brightness") {
+        r *= op.value;
+        g *= op.value;
+        b *= op.value;
+      } else if (op.kind === "saturate") {
+        const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        r = y + (r - y) * op.value;
+        g = y + (g - y) * op.value;
+        b = y + (b - y) * op.value;
+      } else if (op.kind === "sepia") {
+        const sr = r * 0.393 + g * 0.769 + b * 0.189;
+        const sg = r * 0.349 + g * 0.686 + b * 0.168;
+        const sb = r * 0.272 + g * 0.534 + b * 0.131;
+        r = r * (1 - op.value) + sr * op.value;
+        g = g * (1 - op.value) + sg * op.value;
+        b = b * (1 - op.value) + sb * op.value;
+      } else {
+        const hsl = rgbToHsl(r, g, b);
+        const hue = (hsl.h + op.value / 360 + 1) % 1;
+        const rgb = hslToRgb(hue, hsl.s, hsl.l);
+        r = rgb.r;
+        g = rgb.g;
+        b = rgb.b;
+      }
+      r = clamp255(r);
+      g = clamp255(g);
+      b = clamp255(b);
+    }
+    data[i] = Math.round(r);
+    data[i + 1] = Math.round(g);
+    data[i + 2] = Math.round(b);
+  }
+  return imageData;
+};
+
+const applyFilterOpsToCanvas = (
+  canvas: HTMLCanvasElement,
+  ops: FilterOp[],
+  invert = false
+) => {
+  if (ops.length === 0 && !invert) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const next = applyFilterOpsToImageData(imageData, ops, invert);
+  ctx.putImageData(next, 0, 0);
+};
 
 export default function App() {
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
@@ -75,16 +319,29 @@ export default function App() {
   const [exportWidth, setExportWidth] = useState(1200);
   const [exportHeight, setExportHeight] = useState(800);
   const [exportScale, setExportScale] = useState<1 | 2 | 3>(1);
+  const [exportAutoScale, setExportAutoScale] = useState(true);
   const [exportQuality, setExportQuality] = useState(0.92);
+  const [exportIncludeFilters, setExportIncludeFilters] = useState(true);
   const [exportPreviewUrl, setExportPreviewUrl] = useState<string>("");
   const [isExportPreviewLoading, setIsExportPreviewLoading] = useState(false);
   const [exportEstimatedBytes, setExportEstimatedBytes] = useState<number | null>(null);
+  const [exportPreviewZoom, setExportPreviewZoom] = useState(1);
+  const [exportPreviewPan, setExportPreviewPan] = useState({ x: 0, y: 0 });
+  const [isExportPreviewDragging, setIsExportPreviewDragging] = useState(false);
   const [isFileDragActive, setIsFileDragActive] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showMobileLeftSidebar, setShowMobileLeftSidebar] = useState(false);
   const [showMobileRightSidebar, setShowMobileRightSidebar] = useState(false);
   const dragDepthRef = useRef(0);
+  const exportAspectRatioRef = useRef(1200 / 800);
+  const exportPreviewDragRef = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
   const clampZoom = (value: number) => Math.min(200, Math.max(50, Math.round(value)));
+  const clampPreviewZoom = (value: number) => Math.min(6, Math.max(1, value));
   const zoomToCanvasScale = (zoom: number) =>
     zoom <= 100 ? Math.pow(zoom / 100, LOW_ZOOM_EXPONENT) : 1 + (zoom - 100) / 100;
   const handleZoomChange = (value: number) => {
@@ -123,6 +380,8 @@ export default function App() {
         alignThreshold: 6,
         snapStrength: 1,
         canvasPreset: "none",
+        backgroundColor: "#0a0a0a",
+        printOrientation: "portrait",
       };
       setCanvases([freshCanvas]);
       setCurrentCanvasId(freshCanvas.id);
@@ -157,6 +416,8 @@ export default function App() {
           ...canvas,
           name:
             canvas.name === "New Canvas" || canvas.name === "Untitled" ? "" : canvas.name,
+          backgroundColor: canvas.backgroundColor ?? "#0a0a0a",
+          printOrientation: canvas.printOrientation ?? "portrait",
         }));
         if (normalized.length > 0) {
           setCanvases(normalized);
@@ -172,6 +433,7 @@ export default function App() {
             snapStrength: 1,
             canvasPreset: "none",
             backgroundColor: "#0a0a0a",
+            printOrientation: "portrait",
           };
           setCanvases([freshCanvas]);
           setCurrentCanvasId(freshCanvas.id);
@@ -191,6 +453,7 @@ export default function App() {
           snapStrength: 1,
           canvasPreset: "none",
           backgroundColor: "#0a0a0a",
+          printOrientation: "portrait",
         };
         setCanvases([freshCanvas]);
         setCurrentCanvasId(freshCanvas.id);
@@ -352,6 +615,22 @@ export default function App() {
     setCanvases((prev) =>
       prev.map((canvas) =>
         canvas.id === currentCanvasId ? { ...canvas, backgroundColor: color } : canvas
+      )
+    );
+  };
+
+  const toggleCanvasPrintOrientation = () => {
+    if (!currentCanvas) return;
+    recordHistory();
+    setCanvases((prev) =>
+      prev.map((canvas) =>
+        canvas.id === currentCanvasId
+          ? {
+              ...canvas,
+              printOrientation:
+                canvas.printOrientation === "landscape" ? "portrait" : "landscape",
+            }
+          : canvas
       )
     );
   };
@@ -618,13 +897,97 @@ export default function App() {
   };
 
   const openExportPanel = () => {
+    resetExportPreviewTransform();
     const nodes = getVisibleNodes();
     if (nodes.length > 0) {
       const bounds = getExportBounds(nodes);
-      setExportWidth(Math.max(64, Math.round(bounds.width)));
-      setExportHeight(Math.max(64, Math.round(bounds.height)));
+      const nextWidth = Math.max(64, Math.round(bounds.width));
+      const nextHeight = Math.max(64, Math.round(bounds.height));
+      setExportWidth(nextWidth);
+      setExportHeight(nextHeight);
+      exportAspectRatioRef.current = nextWidth / Math.max(1, nextHeight);
     }
     setShowExport(true);
+  };
+
+  const handleToggleExportAutoScale = () => {
+    setExportAutoScale((prev) => {
+      const next = !prev;
+      if (next) {
+        exportAspectRatioRef.current = exportWidth / Math.max(1, exportHeight);
+      }
+      return next;
+    });
+  };
+
+  const handleExportWidthChange = (value: number) => {
+    const nextWidth = Math.max(16, Math.round(value) || 16);
+    if (!exportAutoScale) {
+      setExportWidth(nextWidth);
+      return;
+    }
+    const ratio = exportAspectRatioRef.current || 1;
+    const nextHeight = Math.max(16, Math.round(nextWidth / ratio));
+    setExportWidth(nextWidth);
+    setExportHeight(nextHeight);
+  };
+
+  const handleExportHeightChange = (value: number) => {
+    const nextHeight = Math.max(16, Math.round(value) || 16);
+    if (!exportAutoScale) {
+      setExportHeight(nextHeight);
+      return;
+    }
+    const ratio = exportAspectRatioRef.current || 1;
+    const nextWidth = Math.max(16, Math.round(nextHeight * ratio));
+    setExportHeight(nextHeight);
+    setExportWidth(nextWidth);
+  };
+
+  const resetExportPreviewTransform = () => {
+    setExportPreviewZoom(1);
+    setExportPreviewPan({ x: 0, y: 0 });
+    setIsExportPreviewDragging(false);
+    exportPreviewDragRef.current = null;
+  };
+
+  const handleExportPreviewWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!exportPreviewUrl) return;
+    event.preventDefault();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    setExportPreviewZoom((prev) => {
+      const next = clampPreviewZoom(prev + direction * 0.2);
+      if (next <= 1) {
+        setExportPreviewPan({ x: 0, y: 0 });
+      }
+      return next;
+    });
+  };
+
+  const handleExportPreviewMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (exportPreviewZoom <= 1 || !exportPreviewUrl) return;
+    event.preventDefault();
+    setIsExportPreviewDragging(true);
+    exportPreviewDragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: exportPreviewPan.x,
+      originY: exportPreviewPan.y,
+    };
+  };
+
+  const handleExportPreviewMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isExportPreviewDragging || !exportPreviewDragRef.current) return;
+    const drag = exportPreviewDragRef.current;
+    setExportPreviewPan({
+      x: drag.originX + (event.clientX - drag.startX),
+      y: drag.originY + (event.clientY - drag.startY),
+    });
+  };
+
+  const handleExportPreviewMouseUp = () => {
+    setIsExportPreviewDragging(false);
+    exportPreviewDragRef.current = null;
   };
 
   const readImage = (src: string): Promise<HTMLImageElement> =>
@@ -691,15 +1054,30 @@ export default function App() {
     nodes: NodeData[],
     bounds: { minX: number; minY: number; width: number; height: number },
     renderWidth: number,
-    renderHeight: number
+    renderHeight: number,
+    options?: { includeFilters?: boolean }
   ) => {
     if (!currentCanvas) return "";
+    const includeFilters = options?.includeFilters ?? true;
     const scaleX = renderWidth / bounds.width;
     const scaleY = renderHeight / bounds.height;
+    const canvasPreset = currentCanvas.canvasPreset;
+    const canvasFilter = includeFilters ? resolveCanvasPresetFilter(canvasPreset) : "none";
+    const includeCanvasGrain = includeFilters && canvasPreset !== "none";
     const parts: string[] = [];
     parts.push(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${renderWidth}" height="${renderHeight}" viewBox="0 0 ${renderWidth} ${renderHeight}">`
     );
+    if (includeCanvasGrain) {
+      const grainColor = canvasPreset === "paper" ? "0,0,0" : "255,255,255";
+      const grainAlpha = canvasPreset === "paper" ? "0.08" : "0.12";
+      parts.push(
+        `<defs><pattern id="canvas-grain" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1" cy="1" r="0.6" fill="rgba(${grainColor},${grainAlpha})" /></pattern></defs>`
+      );
+    }
+    if (canvasFilter !== "none") {
+      parts.push(`<g style="filter:${escapeXml(canvasFilter)}">`);
+    }
     parts.push(`<rect x="0" y="0" width="${renderWidth}" height="${renderHeight}" fill="${escapeXml(currentCanvas.backgroundColor)}" />`);
     nodes.forEach((node) => {
       const size = getNodeSize(node);
@@ -711,7 +1089,12 @@ export default function App() {
       const cy = y + h / 2;
       const opacity = Math.max(0, Math.min(1, node.opacity ?? 1));
       const rotation = node.rotation ?? 0;
-      parts.push(`<g opacity="${opacity}" transform="rotate(${rotation} ${cx} ${cy})">`);
+      const nodeFilter = composeCssFilters([
+        includeFilters ? resolveNodePresetFilter(node.preset) : undefined,
+        includeFilters && node.invertColors ? "invert(1)" : undefined,
+      ]);
+      const nodeFilterAttr = nodeFilter !== "none" ? ` style="filter:${escapeXml(nodeFilter)}"` : "";
+      parts.push(`<g opacity="${opacity}" transform="rotate(${rotation} ${cx} ${cy})"${nodeFilterAttr}>`);
       if (node.type === "text") {
         const textStyle = node.textStyle ?? {};
         const align = textStyle.align ?? "center";
@@ -738,9 +1121,7 @@ export default function App() {
           (node.thumbnail?.length ?? 0) > 0;
         if (isImage && imageSrc) {
           parts.push(
-            `<image href="${escapeXml(imageSrc)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"${
-              node.invertColors ? ` style="filter:invert(1)"` : ""
-            } />`
+            `<image href="${escapeXml(imageSrc)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet" />`
           );
         } else {
           parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,255,255,0.08)" />`);
@@ -753,17 +1134,60 @@ export default function App() {
       }
       parts.push(`</g>`);
     });
+    if (canvasFilter !== "none") {
+      parts.push(`</g>`);
+    }
+    if (includeCanvasGrain) {
+      parts.push(`<rect x="0" y="0" width="${renderWidth}" height="${renderHeight}" fill="url(#canvas-grain)" />`);
+    }
     parts.push("</svg>");
     return parts.join("");
+  };
+
+  const applyCanvasPresetGrain = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    canvasPreset: Canvas["canvasPreset"]
+  ) => {
+    if (canvasPreset === "none") return;
+    const grainCanvas = document.createElement("canvas");
+    grainCanvas.width = width;
+    grainCanvas.height = height;
+    const grainCtx = grainCanvas.getContext("2d");
+    if (!grainCtx) return;
+    const grainData = grainCtx.createImageData(width, height);
+    const pixels = grainData.data;
+    const grainBaseAlpha = canvasPreset === "paper" ? 0.08 : 0.12;
+    const grainColor = canvasPreset === "paper" ? 0 : 255;
+    let seed = ((width * 73856093) ^ (height * 19349663) ^ canvasPreset.charCodeAt(0)) >>> 0;
+    const nextRandom = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    for (let y = 0; y < height; y += 3) {
+      for (let x = 0; x < width; x += 3) {
+        const index = (y * width + x) * 4;
+        const alpha = grainBaseAlpha * (0.35 + 0.65 * nextRandom());
+        pixels[index] = grainColor;
+        pixels[index + 1] = grainColor;
+        pixels[index + 2] = grainColor;
+        pixels[index + 3] = Math.round(alpha * 255);
+      }
+    }
+    grainCtx.putImageData(grainData, 0, 0);
+    ctx.drawImage(grainCanvas, 0, 0);
   };
 
   const renderExportCanvas = async (
     nodes: NodeData[],
     bounds: { minX: number; minY: number; width: number; height: number },
     renderWidth: number,
-    renderHeight: number
+    renderHeight: number,
+    options?: { includeFilters?: boolean }
   ) => {
     if (!currentCanvas) throw new Error("No active canvas");
+    const includeFilters = options?.includeFilters ?? true;
     const scaleX = renderWidth / bounds.width;
     const scaleY = renderHeight / bounds.height;
     const canvas = document.createElement("canvas");
@@ -788,23 +1212,35 @@ export default function App() {
       ctx.rotate(((node.rotation ?? 0) * Math.PI) / 180);
       ctx.translate(-cx, -cy);
       if (node.type === "text") {
+        const nodeOps = includeFilters ? resolveNodePresetOps(node.preset) : [];
         const textStyle = node.textStyle ?? {};
         const fontSize = Math.max(10, Math.min(512, textStyle.fontSize ?? 14)) * Math.min(scaleX, scaleY);
         const fontFamily = (textStyle.fontFamily ?? "IBM Plex Mono").replace(/"/g, "");
-        ctx.fillStyle = textStyle.color ?? "#e6e6e6";
-        ctx.textBaseline = "middle";
-        ctx.font = `${textStyle.italic ? "italic " : ""}${textStyle.bold ? "700" : "300"} ${fontSize}px "${fontFamily}", monospace`;
-        if ((textStyle.align ?? "center") === "left") {
-          ctx.textAlign = "left";
-          ctx.fillText(node.title || "Text", x + 8, y + h / 2, w - 16);
-        } else if ((textStyle.align ?? "center") === "right") {
-          ctx.textAlign = "right";
-          ctx.fillText(node.title || "Text", x + w - 8, y + h / 2, w - 16);
-        } else {
-          ctx.textAlign = "center";
-          ctx.fillText(node.title || "Text", x + w / 2, y + h / 2, w - 16);
+        const nodeCanvas = document.createElement("canvas");
+        nodeCanvas.width = Math.max(1, Math.round(w));
+        nodeCanvas.height = Math.max(1, Math.round(h));
+        const nodeCtx = nodeCanvas.getContext("2d");
+        if (!nodeCtx) {
+          ctx.restore();
+          continue;
         }
+        nodeCtx.fillStyle = textStyle.color ?? "#e6e6e6";
+        nodeCtx.textBaseline = "middle";
+        nodeCtx.font = `${textStyle.italic ? "italic " : ""}${textStyle.bold ? "700" : "300"} ${fontSize}px "${fontFamily}", monospace`;
+        if ((textStyle.align ?? "center") === "left") {
+          nodeCtx.textAlign = "left";
+          nodeCtx.fillText(node.title || "Text", 8, h / 2, Math.max(1, w - 16));
+        } else if ((textStyle.align ?? "center") === "right") {
+          nodeCtx.textAlign = "right";
+          nodeCtx.fillText(node.title || "Text", w - 8, h / 2, Math.max(1, w - 16));
+        } else {
+          nodeCtx.textAlign = "center";
+          nodeCtx.fillText(node.title || "Text", w / 2, h / 2, Math.max(1, w - 16));
+        }
+        applyFilterOpsToCanvas(nodeCanvas, nodeOps, includeFilters && Boolean(node.invertColors));
+        ctx.drawImage(nodeCanvas, x, y, w, h);
       } else {
+        const nodeOps = includeFilters ? resolveNodePresetOps(node.preset) : [];
         const src = node.mediaUrl || node.thumbnail || "";
         const isImage =
           (node.mediaUrl?.startsWith("data:image/") ||
@@ -814,22 +1250,30 @@ export default function App() {
         if (isImage && src) {
           try {
             const image = await readImage(src);
+            const nodeCanvas = document.createElement("canvas");
+            nodeCanvas.width = Math.max(1, Math.round(w));
+            nodeCanvas.height = Math.max(1, Math.round(h));
+            const nodeCtx = nodeCanvas.getContext("2d");
+            if (!nodeCtx) {
+              ctx.restore();
+              continue;
+            }
             const sourceRatio = image.width / image.height;
             const targetRatio = w / h;
             let drawW = w;
             let drawH = h;
-            let drawX = x;
-            let drawY = y;
+            let drawX = 0;
+            let drawY = 0;
             if (sourceRatio > targetRatio) {
               drawH = w / sourceRatio;
-              drawY = y + (h - drawH) / 2;
+              drawY = (h - drawH) / 2;
             } else {
               drawW = h * sourceRatio;
-              drawX = x + (w - drawW) / 2;
+              drawX = (w - drawW) / 2;
             }
-            ctx.filter = node.invertColors ? "invert(1)" : "none";
-            ctx.drawImage(image, drawX, drawY, drawW, drawH);
-            ctx.filter = "none";
+            nodeCtx.drawImage(image, drawX, drawY, drawW, drawH);
+            applyFilterOpsToCanvas(nodeCanvas, nodeOps, includeFilters && Boolean(node.invertColors));
+            ctx.drawImage(nodeCanvas, x, y, w, h);
           } catch {
             ctx.fillStyle = "rgba(255,255,255,0.08)";
             ctx.fillRect(x, y, w, h);
@@ -845,6 +1289,11 @@ export default function App() {
         }
       }
       ctx.restore();
+    }
+    const canvasOps = includeFilters ? resolveCanvasPresetOps(currentCanvas.canvasPreset) : [];
+    if (canvasOps.length > 0) {
+      applyFilterOpsToCanvas(canvas, canvasOps, false);
+      applyCanvasPresetGrain(ctx, renderWidth, renderHeight, currentCanvas.canvasPreset);
     }
     return canvas;
   };
@@ -864,7 +1313,9 @@ export default function App() {
     const fileBase = (currentCanvas.name || "canvas").trim().toLowerCase().replace(/\s+/g, "-") || "canvas";
 
     if (exportFormat === "svg") {
-      const svgMarkup = buildExportSvgMarkup(nodes, bounds, renderWidth, renderHeight);
+      const svgMarkup = buildExportSvgMarkup(nodes, bounds, renderWidth, renderHeight, {
+        includeFilters: exportIncludeFilters,
+      });
       const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
       const svgUrl = URL.createObjectURL(svgBlob);
       const link = document.createElement("a");
@@ -878,7 +1329,9 @@ export default function App() {
       return;
     }
 
-    const canvas = await renderExportCanvas(nodes, bounds, renderWidth, renderHeight);
+    const canvas = await renderExportCanvas(nodes, bounds, renderWidth, renderHeight, {
+      includeFilters: exportIncludeFilters,
+    });
 
     const mimeType =
       exportFormat === "jpeg"
@@ -933,7 +1386,9 @@ export default function App() {
     const renderHeight = Math.max(1, Math.round(canvasRect.height));
 
     try {
-      const renderCanvas = await renderExportCanvas(nodes, bounds, renderWidth, renderHeight);
+      const renderCanvas = await renderExportCanvas(nodes, bounds, renderWidth, renderHeight, {
+        includeFilters: true,
+      });
       const blob = await blobFromCanvas(renderCanvas, "image/png");
       const objectUrl = URL.createObjectURL(blob);
       await navigator.clipboard.writeText(objectUrl);
@@ -977,13 +1432,19 @@ export default function App() {
     const buildPreview = async () => {
       try {
         if (exportFormat === "svg") {
-          const fullSvgMarkup = buildExportSvgMarkup(nodes, bounds, fullWidth, fullHeight);
+          const fullSvgMarkup = buildExportSvgMarkup(nodes, bounds, fullWidth, fullHeight, {
+            includeFilters: exportIncludeFilters,
+          });
           setExportEstimatedBytes(new TextEncoder().encode(fullSvgMarkup).length);
-          const svgMarkup = buildExportSvgMarkup(nodes, bounds, previewWidth, previewHeight);
+          const svgMarkup = buildExportSvgMarkup(nodes, bounds, previewWidth, previewHeight, {
+            includeFilters: exportIncludeFilters,
+          });
           const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
           nextPreviewUrl = URL.createObjectURL(svgBlob);
         } else {
-          const canvas = await renderExportCanvas(nodes, bounds, previewWidth, previewHeight);
+          const canvas = await renderExportCanvas(nodes, bounds, previewWidth, previewHeight, {
+            includeFilters: exportIncludeFilters,
+          });
           const blob = await blobFromCanvas(canvas, "image/png");
           const previewPixels = Math.max(1, previewWidth * previewHeight);
           const fullPixels = Math.max(1, fullWidth * fullHeight);
@@ -1021,6 +1482,7 @@ export default function App() {
     exportHeight,
     exportScale,
     exportQuality,
+    exportIncludeFilters,
     printFrame.enabled,
     printFrame.x,
     printFrame.y,
@@ -1032,8 +1494,9 @@ export default function App() {
 
   const handlePrintCanvas = () => {
     if (!currentCanvas) return;
-    const minX = DEFAULT_PRINT_AREA.x;
-    const minY = DEFAULT_PRINT_AREA.y;
+    const printArea = resolvePrintArea(currentCanvas.printOrientation ?? "portrait");
+    const minX = printArea.x;
+    const minY = printArea.y;
     const padding = 40;
     const scale = 1;
     setPrintLayout({
@@ -1093,6 +1556,7 @@ export default function App() {
       snapStrength: 1,
       canvasPreset: "none",
       backgroundColor: "#0a0a0a",
+      printOrientation: "portrait",
     };
     setCanvases((prev) => [...prev, canvas]);
     setCurrentCanvasId(canvas.id);
@@ -1263,8 +1727,8 @@ export default function App() {
     /\.(png|jpe-g|gif|webp|avif)$/i.test(expandedMedia);
   const expandedIsVideo =
     expandedMedia.startsWith("data:video/") || /\.(mp4|webm|ogg)$/i.test(expandedMedia);
-    const printNodes = currentCanvas?.nodes.filter((node) => node.visible !== false) ?? [];
-  const activePrintArea = DEFAULT_PRINT_AREA;
+  const printNodes = currentCanvas?.nodes.filter((node) => node.visible !== false) ?? [];
+  const activePrintArea = resolvePrintArea(currentCanvas?.printOrientation ?? "portrait");
 
   return (
     <div 
@@ -1559,7 +2023,9 @@ export default function App() {
                     onUpdateNode={updateNode}
                     printFrame={printFrame}
                     onPrintFrameChange={setPrintFrame}
-                    defaultPrintArea={DEFAULT_PRINT_AREA}
+                    defaultPrintArea={activePrintArea}
+                    printOrientation={currentCanvas.printOrientation}
+                    onTogglePrintOrientation={toggleCanvasPrintOrientation}
                     showPrintArea={showPrintArea}
                     canvasPreset={currentCanvas.canvasPreset}
                     backgroundColor={currentCanvas.backgroundColor}
@@ -1829,7 +2295,7 @@ export default function App() {
 
       {showExport && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-[560px] max-w-[92vw] bg-[#0a0a0a] border border-white/10 rounded-none p-6">
+          <div className="w-[980px] max-w-[96vw] max-h-[92vh] overflow-hidden bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">Export Output</div>
               <button
@@ -1840,120 +2306,232 @@ export default function App() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
+            <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-4 lg:gap-5 items-start">
+              <div className="space-y-3">
                 <div className="text-[10px] text-[#737373] mb-2 uppercase tracking-wider font-light">
                   Preview
                 </div>
-                <div className="w-full h-[220px] border border-white/10 bg-black/30 flex items-center justify-center overflow-hidden">
+                <div
+                  className="w-full h-[300px] lg:h-[430px] border border-white/10 bg-black/30 overflow-hidden"
+                  onWheel={handleExportPreviewWheel}
+                  onMouseDown={handleExportPreviewMouseDown}
+                  onMouseMove={handleExportPreviewMouseMove}
+                  onMouseUp={handleExportPreviewMouseUp}
+                  onMouseLeave={handleExportPreviewMouseUp}
+                  onDoubleClick={resetExportPreviewTransform}
+                >
                   {isExportPreviewLoading ? (
-                    <div className="text-xs text-[#737373]">Rendering preview...</div>
+                    <div className="w-full h-full flex items-center justify-center text-xs text-[#737373]">
+                      Rendering preview...
+                    </div>
                   ) : exportPreviewUrl ? (
-                    <img
-                      src={exportPreviewUrl}
-                      alt="Export preview"
-                      className="max-w-full max-h-full object-contain"
-                    />
+                    <div
+                      className={`w-full h-full flex items-center justify-center ${
+                        exportPreviewZoom > 1
+                          ? isExportPreviewDragging
+                            ? "cursor-grabbing"
+                            : "cursor-grab"
+                          : "cursor-zoom-in"
+                      }`}
+                      style={{
+                        transform: `translate(${exportPreviewPan.x}px, ${exportPreviewPan.y}px) scale(${exportPreviewZoom})`,
+                        transformOrigin: "center center",
+                      }}
+                    >
+                      <img
+                        src={exportPreviewUrl}
+                        alt="Export preview"
+                        draggable={false}
+                        className="max-w-full max-h-full object-contain select-none"
+                      />
+                    </div>
                   ) : (
-                    <div className="text-xs text-[#737373]">No preview available.</div>
+                    <div className="w-full h-full flex items-center justify-center text-xs text-[#737373]">
+                      No preview available.
+                    </div>
                   )}
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-[#737373] mb-1.5 block font-light">Format</label>
-                  <select
-                    value={exportFormat}
-                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-                    className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                  >
-                    <option className="bg-[#0a0a0a]" value="png">PNG</option>
-                    <option className="bg-[#0a0a0a]" value="jpeg">JPEG</option>
-                    <option className="bg-[#0a0a0a]" value="webp">WEBP</option>
-                    <option className="bg-[#0a0a0a]" value="svg">SVG</option>
-                    <option className="bg-[#0a0a0a]" value="ico">ICO</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-[#737373] mb-1.5 block font-light">Resolution</label>
-                  <select
-                    value={exportScale}
-                    onChange={(event) => setExportScale(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                  >
-                    <option className="bg-[#0a0a0a]" value={1}>1x</option>
-                    <option className="bg-[#0a0a0a]" value={2}>2x</option>
-                    <option className="bg-[#0a0a0a]" value={3}>3x</option>
-                  </select>
+                <div className="text-[10px] text-[#737373]">
+                  Wheel to zoom, drag to pan, double-click to reset.
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-[#737373] mb-1.5 block font-light">Width (px)</label>
-                  <input
-                    type="number"
-                    min="16"
-                    value={exportWidth}
-                    onChange={(event) => setExportWidth(Math.max(16, Number(event.target.value) || 16))}
-                    className="w-full bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-[#737373] mb-1.5 block font-light">Height (px)</label>
-                  <input
-                    type="number"
-                    min="16"
-                    value={exportHeight}
-                    onChange={(event) => setExportHeight(Math.max(16, Number(event.target.value) || 16))}
-                    className="w-full bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              {(exportFormat === "jpeg" || exportFormat === "webp") && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs text-[#737373] block font-light">Quality</label>
-                    <span className="text-[10px] text-[#737373] tabular-nums">
-                      {Math.round(exportQuality * 100)}%
-                    </span>
+              <div className="space-y-3 lg:space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-[#737373] mb-1.5 block font-light">Format</label>
+                    <select
+                      value={exportFormat}
+                      onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                      className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
+                    >
+                      <option className="bg-[#0a0a0a]" value="png">PNG</option>
+                      <option className="bg-[#0a0a0a]" value="jpeg">JPEG</option>
+                      <option className="bg-[#0a0a0a]" value="webp">WEBP</option>
+                      <option className="bg-[#0a0a0a]" value="svg">SVG</option>
+                      <option className="bg-[#0a0a0a]" value="ico">ICO</option>
+                    </select>
                   </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="100"
-                    value={Math.round(exportQuality * 100)}
-                    onChange={(event) => setExportQuality(Math.max(0.5, Math.min(1, Number(event.target.value) / 100)))}
-                    className="w-full h-0.5 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
-                  />
+                  <div>
+                    <label className="text-xs text-[#737373] mb-1.5 block font-light">Resolution</label>
+                    <select
+                      value={exportScale}
+                      onChange={(event) => setExportScale(Number(event.target.value) as 1 | 2 | 3)}
+                      className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
+                    >
+                      <option className="bg-[#0a0a0a]" value={1}>1x</option>
+                      <option className="bg-[#0a0a0a]" value={2}>2x</option>
+                      <option className="bg-[#0a0a0a]" value={3}>3x</option>
+                    </select>
+                  </div>
                 </div>
-              )}
 
-              <div className="text-[11px] text-[#737373]">
-                Final Output: {(exportWidth * exportScale).toLocaleString()} x {(exportHeight * exportScale).toLocaleString()} px
-              </div>
-              <div className="text-[11px] text-[#737373]">
-                Estimated File Size: {exportEstimatedBytes !== null ? formatBytes(exportEstimatedBytes) : "Calculating..."}
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-[#737373] mb-1.5 block font-light">Width (px)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="16"
+                        value={exportWidth}
+                        onChange={(event) => handleExportWidthChange(Number(event.target.value))}
+                        className="w-full bg-transparent border border-white/10 text-[#fafafa] pl-3 pr-11 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <div className="absolute inset-y-0 right-0 w-9 border-l border-white/10 bg-[#0a0a0a]">
+                        <button
+                          type="button"
+                          onClick={() => handleExportWidthChange(exportWidth + 1)}
+                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] border-b border-white/10 transition-colors"
+                          aria-label="Increase width"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportWidthChange(exportWidth - 1)}
+                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
+                          aria-label="Decrease width"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-[#737373] mb-1.5 block font-light">Height (px)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="16"
+                        value={exportHeight}
+                        onChange={(event) => handleExportHeightChange(Number(event.target.value))}
+                        className="w-full bg-transparent border border-white/10 text-[#fafafa] pl-3 pr-11 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <div className="absolute inset-y-0 right-0 w-9 border-l border-white/10 bg-[#0a0a0a]">
+                        <button
+                          type="button"
+                          onClick={() => handleExportHeightChange(exportHeight + 1)}
+                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] border-b border-white/10 transition-colors"
+                          aria-label="Increase height"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportHeightChange(exportHeight - 1)}
+                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
+                          aria-label="Decrease height"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setShowExport(false)}
-                  className="h-9 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    void runExport();
-                  }}
-                  className="h-9 px-3 rounded-none border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] bg-white/10 hover:bg-white/15 transition-colors flex items-center gap-1.5"
-                >
-                  <Download className="w-3 h-3" />
-                  Export File
-                </button>
+                <div className="flex items-center justify-between border border-white/10 px-3 py-2">
+                  <div>
+                    <div className="text-xs text-[#fafafa] font-light">Auto Scaling</div>
+                    <div className="text-[10px] text-[#737373] mt-0.5">
+                      Keep width and height locked to aspect ratio.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleExportAutoScale}
+                    className={`h-7 px-2 rounded-none border text-[10px] uppercase tracking-wider transition-colors ${
+                      exportAutoScale
+                        ? "border-white/30 text-[#fafafa] bg-white/10"
+                        : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                    }`}
+                  >
+                    {exportAutoScale ? "On" : "Off"}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between border border-white/10 px-3 py-2">
+                  <div>
+                    <div className="text-xs text-[#fafafa] font-light">Apply Filters</div>
+                    <div className="text-[10px] text-[#737373] mt-0.5">
+                      Includes layer preset, canvas preset, and invert settings.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExportIncludeFilters((prev) => !prev)}
+                    className={`h-7 px-2 rounded-none border text-[10px] uppercase tracking-wider transition-colors ${
+                      exportIncludeFilters
+                        ? "border-white/30 text-[#fafafa] bg-white/10"
+                        : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                    }`}
+                  >
+                    {exportIncludeFilters ? "On" : "Off"}
+                  </button>
+                </div>
+
+                {(exportFormat === "jpeg" || exportFormat === "webp") && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-[#737373] block font-light">Quality</label>
+                      <span className="text-[10px] text-[#737373] tabular-nums">
+                        {Math.round(exportQuality * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="100"
+                      value={Math.round(exportQuality * 100)}
+                      onChange={(event) => setExportQuality(Math.max(0.5, Math.min(1, Number(event.target.value) / 100)))}
+                      className="w-full h-0.5 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
+                    />
+                  </div>
+                )}
+
+                <div className="text-[11px] text-[#737373]">
+                  Final Output: {(exportWidth * exportScale).toLocaleString()} x {(exportHeight * exportScale).toLocaleString()} px
+                </div>
+                <div className="text-[11px] text-[#737373]">
+                  Estimated File Size: {exportEstimatedBytes !== null ? formatBytes(exportEstimatedBytes) : "Calculating..."}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => setShowExport(false)}
+                    className="h-9 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      void runExport();
+                    }}
+                    className="h-9 px-3 rounded-none border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] bg-white/10 hover:bg-white/15 transition-colors flex items-center gap-1.5"
+                  >
+                    <Download className="w-3 h-3" />
+                    Export File
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2001,7 +2579,10 @@ export default function App() {
         <div
           data-role="print-canvas"
           className="fixed inset-0 bg-[#0a0a0a] z-[9999]"
-          style={{ background: currentCanvas.backgroundColor }}
+          style={{
+            background: currentCanvas.backgroundColor,
+            filter: resolveCanvasPresetFilter(currentCanvas.canvasPreset) || "none",
+          }}
         >
           <div
             className="absolute inset-0"
@@ -2053,6 +2634,10 @@ export default function App() {
                       transformOrigin: "center center",
                       overflow: "hidden",
                       background: "transparent",
+                      filter: composeCssFilters([
+                        resolveNodePresetFilter(node.preset),
+                        node.invertColors ? "invert(1)" : undefined,
+                      ]),
                     }}
                   >
                     {node.type === "text" ? (
@@ -2089,7 +2674,6 @@ export default function App() {
                           height: "100%",
                           objectFit: "contain",
                           opacity: 0.8,
-                          filter: node.invertColors ? "invert(1)" : "none",
                         }}
                       />
                     ) : (
@@ -2112,6 +2696,21 @@ export default function App() {
                   </div>
                 );
               })}
+              {currentCanvas.canvasPreset !== "none" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    pointerEvents: "none",
+                    backgroundImage:
+                      currentCanvas.canvasPreset === "paper"
+                        ? "radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px)"
+                        : "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)",
+                    backgroundSize: "3px 3px",
+                    opacity: currentCanvas.canvasPreset === "paper" ? 0.08 : 0.12,
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
