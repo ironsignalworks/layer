@@ -112,6 +112,162 @@ label.cursor-pointer {
   --control-pad-x: 0.44rem;    /* +10% */
   --control-gap: 0.22rem;      /* +10% */
   --control-icon-size: 0.9rem;
+  --ui-base: #0d0d0d;
+  --ui-surface: #161616;
+  --ui-surface-hi: #232323;
+  --ui-border: rgba(255, 255, 255, 0.16);
+  --ui-shadow: rgba(0, 0, 0, 0.6);
+  --ui-highlight: rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(120% 110% at 50% -20%, #3a3a3a 0%, transparent 45%),
+    linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 52%, #090909 100%);
+}
+
+[data-role="app-shell"] .print-hide {
+  background: linear-gradient(180deg, #171717 0%, #101010 100%) !important;
+}
+
+[data-role="app-shell"] :is(
+  button,
+  [role="button"],
+  label.cursor-pointer,
+  select,
+  input[type="text"],
+  input[type="number"],
+  textarea
+) {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ui-surface-hi) 88%, white 12%) 0%,
+      var(--ui-surface) 48%,
+      color-mix(in srgb, var(--ui-base) 82%, black 18%) 100%
+    ) !important;
+  border-color: var(--ui-border) !important;
+  box-shadow:
+    inset 0 1px 0 var(--ui-highlight),
+    inset 0 -1px 0 var(--ui-shadow),
+    0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+[data-role="app-shell"] :is(button, [role="button"], label.cursor-pointer):hover {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ui-surface-hi) 82%, white 18%) 0%,
+      color-mix(in srgb, var(--ui-surface) 90%, white 10%) 48%,
+      color-mix(in srgb, var(--ui-base) 84%, black 16%) 100%
+    ) !important;
+}
+
+[data-role="app-shell"] :is(button, [role="button"], label.cursor-pointer):active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.65),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-role="app-shell"] :is(
+  .print-hide,
+  .print-hide > div,
+  .print-hide [class*="border"]
+) {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-role="app-shell"] .control-pill,
+[data-role="app-shell"] .control-square {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #2d2d2d 88%, white 12%) 0%,
+      #1c1c1c 50%,
+      #111111 100%
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.62),
+    0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+[data-role="app-shell"] .panel-3d {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #2a2a2a 84%, white 16%) 0%,
+      #181818 52%,
+      #101010 100%
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.62),
+    0 6px 14px rgba(0, 0, 0, 0.28);
+}
+
+[data-role="app-shell"] .layer-row {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #262626 78%, black 22%) 0%,
+      #121212 55%,
+      #0b0b0b 100%
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.7),
+    0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+[data-role="app-shell"] .layer-row:hover {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #2d2d2d 80%, black 20%) 0%,
+      #161616 55%,
+      #0d0d0d 100%
+    ) !important;
+}
+
+[data-role="app-shell"] .layer-row.layer-row-selected {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #323232 80%, white 20%) 0%,
+      #1d1d1d 55%,
+      #111111 100%
+    ) !important;
+}
+
+[data-role="app-shell"] .inspector-compact .inspector-node-title {
+  font-size: 0.82rem !important;
+  line-height: 1.15 !important;
+}
+
+[data-role="app-shell"] .inspector-compact :is(
+  label,
+  .text-xs,
+  .text-sm,
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select,
+  button,
+  label.cursor-pointer
+) {
+  font-size: var(--control-font) !important;
+  line-height: 1.1 !important;
+}
+
+[data-role="app-shell"] .inspector-compact :is(
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select,
+  button,
+  label.cursor-pointer
+) {
+  min-height: var(--control-height) !important;
+  height: var(--control-height) !important;
 }
 
 [data-role="app-shell"] :is(
@@ -202,6 +358,59 @@ label.cursor-pointer {
   cursor: pointer;
 }
 
+[data-role="app-shell"] .compact-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px !important;
+  min-height: 2px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+[data-role="app-shell"] .compact-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+[data-role="app-shell"] .compact-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.56rem;
+  height: 0.56rem;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(230, 230, 230, 0.95);
+  box-shadow: none;
+  margin-top: -3px;
+}
+
+[data-role="app-shell"] .compact-range::-moz-range-track {
+  height: 2px;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+[data-role="app-shell"] .compact-range::-moz-range-thumb {
+  width: 0.56rem;
+  height: 0.56rem;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(230, 230, 230, 0.95);
+  box-shadow: none;
+}
+
+[data-role="app-shell"] .export-stepper .export-step-btn {
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 1 1 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+[data-role="app-shell"] .export-stepper {
+  display: grid !important;
+  grid-template-rows: 1fr 1fr;
+}
+
 .dark select {
   background-color: #0a0a0a;
   color: #fafafa;
@@ -212,6 +421,40 @@ label.cursor-pointer {
 .dark select optgroup {
   background-color: #0a0a0a;
   color: #fafafa;
+}
+
+[data-role="app-shell"] select {
+  background-color: #121212 !important;
+  color: #fafafa !important;
+  color-scheme: dark;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.58),
+    0 1px 1px rgba(0, 0, 0, 0.35) !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+[data-role="app-shell"] select option,
+[data-role="app-shell"] select optgroup {
+  background-color: #101010 !important;
+  color: #fafafa !important;
+}
+
+[data-role="app-shell"] select:focus,
+[data-role="app-shell"] select:focus-visible,
+[data-role="app-shell"] select:active,
+[data-role="app-shell"] select:hover {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  outline: none !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.62),
+    0 1px 1px rgba(0, 0, 0, 0.38) !important;
 }
 
 @theme inline {

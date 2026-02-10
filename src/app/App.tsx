@@ -407,6 +407,12 @@ export default function App() {
   const [exportPreviewZoom, setExportPreviewZoom] = useState(1);
   const [exportPreviewPan, setExportPreviewPan] = useState({ x: 0, y: 0 });
   const [isExportPreviewDragging, setIsExportPreviewDragging] = useState(false);
+  const [isExportFormatMenuOpen, setIsExportFormatMenuOpen] = useState(false);
+  const [isExportScaleMenuOpen, setIsExportScaleMenuOpen] = useState(false);
+  const [isExportFinalPassMenuOpen, setIsExportFinalPassMenuOpen] = useState(false);
+  const exportFormatMenuRef = useRef<HTMLDivElement | null>(null);
+  const exportScaleMenuRef = useRef<HTMLDivElement | null>(null);
+  const exportFinalPassMenuRef = useRef<HTMLDivElement | null>(null);
   const [isFileDragActive, setIsFileDragActive] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showMobileLeftSidebar, setShowMobileLeftSidebar] = useState(false);
@@ -1663,6 +1669,24 @@ export default function App() {
     currentCanvasId,
   ]);
 
+  useEffect(() => {
+    if (!showExport) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (exportFormatMenuRef.current && !exportFormatMenuRef.current.contains(target)) {
+        setIsExportFormatMenuOpen(false);
+      }
+      if (exportScaleMenuRef.current && !exportScaleMenuRef.current.contains(target)) {
+        setIsExportScaleMenuOpen(false);
+      }
+      if (exportFinalPassMenuRef.current && !exportFinalPassMenuRef.current.contains(target)) {
+        setIsExportFinalPassMenuOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [showExport]);
+
   const handlePrintCanvas = () => {
     if (!currentCanvas) return;
     const printArea = resolvePrintArea(currentCanvas.printOrientation ?? "portrait");
@@ -1985,7 +2009,7 @@ export default function App() {
         </div>
       )}
       {!isPlaying && (
-      <div className="print-hide flex-shrink-0 min-h-16 px-3 lg:px-0 py-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
+      <div className="panel-3d print-hide flex-shrink-0 min-h-16 px-3 lg:px-0 py-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
         <div className="flex items-center justify-between lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] lg:px-6">
           <div className="flex flex-col items-start gap-0 leading-tight">
             <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
@@ -2018,15 +2042,13 @@ export default function App() {
             </button>
           </div>
         </div>
-        <div className="w-full lg:flex-1 lg:flex lg:justify-end overflow-hidden">
-          <div className="flex flex-col gap-2 text-xs text-[#737373] w-full lg:w-auto pb-1 lg:pb-0">
+        <div className="w-full lg:flex-1 lg:flex lg:justify-end lg:pr-6 overflow-hidden">
+          <div className="flex flex-col gap-2 text-xs text-[#737373] w-full max-w-full pb-1 lg:pb-0">
             <div className="grid grid-cols-5 gap-2">
-              <div className="control-pill w-[10.5rem] max-w-full border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center justify-start overflow-hidden">
-                <span className="shrink-0">Back {historyPast.length} | Fwd {historyFuture.length}</span>
-                <span className="mx-1 shrink-0">|</span>
-                <span className="min-w-0 truncate">{historyLog[0] ?? "Ready"}</span>
+              <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center justify-start overflow-hidden">
+                <span className="truncate min-w-0">Back {historyPast.length} | Fwd {historyFuture.length} | {historyLog[0] ?? "Ready"}</span>
               </div>
-              <label className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center cursor-pointer">
+              <label className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center cursor-pointer">
                 <Upload />
                 Import
                 <input
@@ -2096,7 +2118,7 @@ export default function App() {
                     }));
                   }
                 }}
-                className={`control-pill w-[10.5rem] border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   printFrame.enabled
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2107,7 +2129,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowPrintArea((prev) => !prev)}
-                className={`control-pill w-[10.5rem] border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   showPrintArea
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2120,7 +2142,7 @@ export default function App() {
                 onClick={() => {
                   void handleShareVisibleCanvasImageLink();
                 }}
-                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Link2 />
                 Share Image Link
@@ -2130,7 +2152,7 @@ export default function App() {
               <button
                 onClick={handleUndo}
                 disabled={historyPast.length === 0}
-                className="control-pill w-[10.5rem] border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Undo"
               >
                 <RotateCcw />
@@ -2139,7 +2161,7 @@ export default function App() {
               <button
                 onClick={handleRedo}
                 disabled={historyFuture.length === 0}
-                className="control-pill w-[10.5rem] border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Redo"
               >
                 <RotateCw />
@@ -2147,21 +2169,21 @@ export default function App() {
               </button>
               <button
                 onClick={openExportPanel}
-                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Download />
                 Download
               </button>
               <button
                 onClick={handlePrintCanvas}
-                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Printer />
                 Print
               </button>
               <button
                 onClick={() => setShowAbout(true)}
-                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Info />
                 About
@@ -2210,6 +2232,11 @@ export default function App() {
             onDeleteCanvas={handleDeleteCanvas}
             activeTool={activeTool}
             onToolChange={setActiveTool}
+            onAddLayer={handleAddNode}
+            onAddTextLayer={handleAddTextLayer}
+            onImportFont={handleImportFont}
+            zoomLevel={zoomLevel}
+            onZoomChange={handleZoomChange}
           />
         </div>
         )}
@@ -2278,73 +2305,6 @@ export default function App() {
           </div>
 
           {/* Bottom Controls - Integrated */}
-          {!isPlaying && (
-          <div className="print-hide flex-shrink-0 border-t border-white/5 bg-[#0a0a0a] px-3 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-y-4 relative">
-            <div className="flex flex-wrap items-center gap-2 max-w-full">
-              <button
-                onClick={handleAddNode}
-                className="px-3 h-10 min-w-[120px] text-[10px] uppercase tracking-wider transition-colors rounded-none flex items-center justify-center gap-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Layer
-              </button>
-              <button
-                onClick={handleAddTextLayer}
-                className="px-3 h-10 min-w-[120px] text-[10px] uppercase tracking-wider transition-colors rounded-none flex items-center justify-center gap-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Text
-              </button>
-              <label className="px-3 h-10 min-w-[140px] text-[10px] uppercase tracking-wider transition-colors rounded-none flex items-center justify-center gap-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 cursor-pointer">
-                <Upload className="w-3.5 h-3.5" />
-                Import Font
-                <input
-                  type="file"
-                  accept=".ttf,.otf,.woff,.woff2,.json"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    handleImportFont(file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-7">
-              {/* Zoom */}
-              <div className="flex items-center gap-3">
-                <ZoomIn className="w-3.5 h-3.5 text-[#737373]" />
-                <button
-                  onClick={() => handleZoomChange(zoomLevel - 10)}
-                  className="h-7 w-7 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors text-[12px]"
-                  aria-label="Zoom out"
-                >
-                  -
-                </button>
-                <input
-                  type="range"
-                  min="50"
-                  max="200"
-                  value={zoomLevel}
-                  onChange={(e) => handleZoomChange(Number(e.target.value))}
-                  className="w-20 h-0.5 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-1.5 [&::-webkit-slider-thumb]:h-1.5 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
-                />
-                <button
-                  onClick={() => handleZoomChange(zoomLevel + 10)}
-                  className="h-7 w-7 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors text-[12px]"
-                  aria-label="Zoom in"
-                >
-                  +
-                </button>
-                <span className="text-[11px] text-[#737373] font-mono min-w-[4ch] text-right tabular-nums">
-                  {zoomLevel}%
-                </span>
-              </div>
-            </div>
-          </div>
-          )}
         </div>
 
         {/* Right Sidebar */}
@@ -2389,7 +2349,7 @@ export default function App() {
             onClick={() => setShowMobileLeftSidebar(false)}
             aria-label="Close layers panel"
           />
-          <div className="absolute left-0 top-0 h-[100dvh] w-[90vw] max-w-[22rem] bg-[#0a0a0a] border-r border-white/10 flex flex-col">
+          <div className="panel-3d absolute left-0 top-0 h-[100dvh] w-[90vw] max-w-[22rem] bg-[#0a0a0a] border-r border-white/10 flex flex-col">
             <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-wider text-[#737373]">Layers</div>
               <button
@@ -2435,6 +2395,11 @@ export default function App() {
                 onDeleteCanvas={handleDeleteCanvas}
                 activeTool={activeTool}
                 onToolChange={setActiveTool}
+                onAddLayer={handleAddNode}
+                onAddTextLayer={handleAddTextLayer}
+                onImportFont={handleImportFont}
+                zoomLevel={zoomLevel}
+                onZoomChange={handleZoomChange}
               />
             </div>
           </div>
@@ -2449,7 +2414,7 @@ export default function App() {
             onClick={() => setShowMobileRightSidebar(false)}
             aria-label="Close inspector panel"
           />
-          <div className="absolute right-0 top-0 h-[100dvh] w-[90vw] max-w-[24rem] bg-[#0a0a0a] border-l border-white/10 flex flex-col">
+          <div className="panel-3d absolute right-0 top-0 h-[100dvh] w-[90vw] max-w-[24rem] bg-[#0a0a0a] border-l border-white/10 flex flex-col">
             <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-wider text-[#737373]">Inspector</div>
               <button
@@ -2557,7 +2522,7 @@ export default function App() {
 
       {showExport && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-[980px] max-w-[96vw] max-h-[92vh] overflow-hidden bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5">
+          <div className="panel-3d w-[980px] max-w-[96vw] max-h-[92vh] overflow-hidden bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">Export Output</div>
               <button
@@ -2624,29 +2589,71 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-[#737373] mb-1.5 block font-light">Format</label>
-                    <select
-                      value={exportFormat}
-                      onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-                      className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                    >
-                      <option className="bg-[#0a0a0a]" value="png">PNG</option>
-                      <option className="bg-[#0a0a0a]" value="jpeg">JPEG</option>
-                      <option className="bg-[#0a0a0a]" value="webp">WEBP</option>
-                      <option className="bg-[#0a0a0a]" value="svg">SVG</option>
-                      <option className="bg-[#0a0a0a]" value="ico">ICO</option>
-                    </select>
+                    <div className="relative" ref={exportFormatMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsExportFormatMenuOpen((prev) => !prev)}
+                        className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                      >
+                        {exportFormat.toUpperCase()}
+                      </button>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
+                      {isExportFormatMenuOpen && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                          {(["png", "jpeg", "webp", "svg", "ico"] as const).map((format) => (
+                            <button
+                              key={format}
+                              type="button"
+                              onClick={() => {
+                                setExportFormat(format);
+                                setIsExportFormatMenuOpen(false);
+                              }}
+                              className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                                exportFormat === format
+                                  ? "text-[#fafafa] bg-white/10"
+                                  : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                              }`}
+                            >
+                              {format.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs text-[#737373] mb-1.5 block font-light">Resolution</label>
-                    <select
-                      value={exportScale}
-                      onChange={(event) => setExportScale(Number(event.target.value) as 1 | 2 | 3)}
-                      className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                    >
-                      <option className="bg-[#0a0a0a]" value={1}>1x</option>
-                      <option className="bg-[#0a0a0a]" value={2}>2x</option>
-                      <option className="bg-[#0a0a0a]" value={3}>3x</option>
-                    </select>
+                    <div className="relative" ref={exportScaleMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsExportScaleMenuOpen((prev) => !prev)}
+                        className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                      >
+                        {exportScale}x
+                      </button>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
+                      {isExportScaleMenuOpen && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                          {([1, 2, 3] as const).map((scale) => (
+                            <button
+                              key={scale}
+                              type="button"
+                              onClick={() => {
+                                setExportScale(scale);
+                                setIsExportScaleMenuOpen(false);
+                              }}
+                              className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                                exportScale === scale
+                                  ? "text-[#fafafa] bg-white/10"
+                                  : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                              }`}
+                            >
+                              {scale}x
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2659,24 +2666,24 @@ export default function App() {
                         min="16"
                         value={exportWidth}
                         onChange={(event) => handleExportWidthChange(Number(event.target.value))}
-                        className="w-full bg-transparent border border-white/10 text-[#fafafa] pl-3 pr-11 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full h-10 bg-transparent border border-white/10 text-[#fafafa] pl-3 pr-11 py-0 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                      <div className="absolute inset-y-0 right-0 w-9 border-l border-white/10 bg-[#0a0a0a]">
+                      <div className="export-stepper absolute right-0 inset-y-px w-8 border-l border-white/10 bg-[#0a0a0a] overflow-hidden divide-y divide-white/10">
                         <button
                           type="button"
                           onClick={() => handleExportWidthChange(exportWidth + 1)}
-                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] border-b border-white/10 transition-colors"
+                          className="export-step-btn w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
                           aria-label="Increase width"
                         >
-                          <ChevronUp className="w-3 h-3" />
+                          <ChevronUp className="w-2.5 h-2.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleExportWidthChange(exportWidth - 1)}
-                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
+                          className="export-step-btn w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
                           aria-label="Decrease width"
                         >
-                          <ChevronDown className="w-3 h-3" />
+                          <ChevronDown className="w-2.5 h-2.5" />
                         </button>
                       </div>
                     </div>
@@ -2689,24 +2696,24 @@ export default function App() {
                         min="16"
                         value={exportHeight}
                         onChange={(event) => handleExportHeightChange(Number(event.target.value))}
-                        className="w-full bg-transparent border border-white/10 text-[#fafafa] pl-3 pr-11 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full h-10 bg-transparent border border-white/10 text-[#fafafa] pl-3 pr-11 py-0 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                      <div className="absolute inset-y-0 right-0 w-9 border-l border-white/10 bg-[#0a0a0a]">
+                      <div className="export-stepper absolute right-0 inset-y-px w-8 border-l border-white/10 bg-[#0a0a0a] overflow-hidden divide-y divide-white/10">
                         <button
                           type="button"
                           onClick={() => handleExportHeightChange(exportHeight + 1)}
-                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] border-b border-white/10 transition-colors"
+                          className="export-step-btn w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
                           aria-label="Increase height"
                         >
-                          <ChevronUp className="w-3 h-3" />
+                          <ChevronUp className="w-2.5 h-2.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleExportHeightChange(exportHeight - 1)}
-                          className="h-1/2 w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
+                          className="export-step-btn w-full flex items-center justify-center text-[#737373] hover:text-[#fafafa] transition-colors"
                           aria-label="Decrease height"
                         >
-                          <ChevronDown className="w-3 h-3" />
+                          <ChevronDown className="w-2.5 h-2.5" />
                         </button>
                       </div>
                     </div>
@@ -2758,17 +2765,39 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-[10px] text-[#737373] mb-1 block uppercase tracking-wider">Mode</label>
-                      <select
-                        value={exportFinalPass}
-                        onChange={(event) => setExportFinalPass(event.target.value as FinalPassMode)}
-                        className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                      >
-                        <option className="bg-[#0a0a0a]" value="none">None</option>
-                        <option className="bg-[#0a0a0a]" value="threshold">Threshold</option>
-                        <option className="bg-[#0a0a0a]" value="bitmap">Bitmap</option>
-                        <option className="bg-[#0a0a0a]" value="posterize">Posterize</option>
-                        <option className="bg-[#0a0a0a]" value="duotone">Duotone</option>
-                      </select>
+                      <div className="relative" ref={exportFinalPassMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsExportFinalPassMenuOpen((prev) => !prev)}
+                          className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                        >
+                          {exportFinalPass === "none"
+                            ? "None"
+                            : exportFinalPass.charAt(0).toUpperCase() + exportFinalPass.slice(1)}
+                        </button>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
+                        {isExportFinalPassMenuOpen && (
+                          <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                            {(["none", "threshold", "bitmap", "posterize", "duotone"] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => {
+                                  setExportFinalPass(mode);
+                                  setIsExportFinalPassMenuOpen(false);
+                                }}
+                                className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                                  exportFinalPass === mode
+                                    ? "text-[#fafafa] bg-white/10"
+                                    : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                                }`}
+                              >
+                                {mode === "none" ? "None" : mode.charAt(0).toUpperCase() + mode.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -2848,18 +2877,18 @@ export default function App() {
 
       {showAbout && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-[560px] max-w-[92vw] max-h-[86vh] overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-none p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-[#fafafa] font-light">Fanzinator - Image + Text Editor</div>
+          <div className="panel-3d w-[680px] max-w-[94vw] max-h-[88vh] overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-none p-7">
+            <div className="flex items-center justify-between mb-5">
+              <div className="text-lg text-[#fafafa] font-light">Fanzinator - Image + Text Editor</div>
               <button
                 onClick={() => setShowAbout(false)}
-                className="text-xs text-[#737373] hover:text-[#fafafa] transition-colors"
+                className="control-pill px-3 border border-white/10 text-[11px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 Close
               </button>
             </div>
-            <div className="space-y-4 text-xs text-[#737373] leading-relaxed">
-              <div className="text-[#fafafa]">
+            <div className="space-y-5 text-sm text-[#9a9a9a] leading-relaxed">
+              <div className="text-base text-[#e8e8e8]">
                 Fanzinator is a focused image-and-text canvas editor for fast visual composition.
               </div>
               <div>
@@ -2867,23 +2896,23 @@ export default function App() {
                 Work is auto-saved locally in your browser.
               </div>
               <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-wider text-[#737373]">Build</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Build</div>
                 <div>Add Image or Add Text, drag files onto the canvas to import, and manage layers from the left panel.</div>
               </div>
               <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-wider text-[#737373]">Tool Specs (Brush + Eraser)</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Tool Specs (Brush + Eraser)</div>
                 <div>Select a stroke layer to paint or erase directly on that layer. If no layer is selected, Brush creates a new stroke layer.</div>
                 <div>Right-click on the canvas while Brush or Eraser is active to open tool settings.</div>
                 <div>Brush settings: preset (Ink, Marker, Chalk), size, and color.</div>
                 <div>Eraser settings: size and format (Round or Square).</div>
               </div>
               <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-wider text-[#737373]">Edit</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Edit</div>
                 <div>Use Undo/Redo or Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z, duplicate with Cmd/Ctrl+D, and delete with Delete/Backspace.</div>
                 <div>Pan by dragging empty canvas space, hold Shift and drag for box select, and zoom with mouse wheel.</div>
               </div>
               <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-wider text-[#737373]">Output</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Output</div>
                 <div>Use Export Snip to frame visible output, Download for PNG/JPEG/SVG, Share Image Link for quick previews, and Print for page output.</div>
               </div>
             </div>

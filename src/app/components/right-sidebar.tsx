@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { NodeData, NodeTextStyle, TextAlign } from "./world-node";
-import { Eye, Trash2, Copy, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import { Eye, Trash2, Copy, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown } from "lucide-react";
 
 const GOOGLE_FONTS_METADATA_URL = "https://fonts.google.com/metadata/fonts";
 const FALLBACK_GOOGLE_FONTS = [
@@ -84,6 +84,15 @@ const FALLBACK_GOOGLE_FONTS = [
   "Pacifico",
 ];
 let cachedGoogleFonts: string[] | null = null;
+const LAYER_PRESET_OPTIONS: Array<{ value: NonNullable<NodeData["preset"]> | "none"; label: string }> = [
+  { value: "none", label: "None" },
+  { value: "zine", label: "Zine" },
+  { value: "acid", label: "Acid" },
+  { value: "retro", label: "Retro" },
+  { value: "mono", label: "Mono" },
+  { value: "neon", label: "Neon" },
+  { value: "paper", label: "Paper" },
+];
 
 const buildGoogleFontHref = (fontFamily: string) => {
   const family = fontFamily.trim();
@@ -299,8 +308,10 @@ export function RightSidebar({
   const [textColor, setTextColor] = useState(selectedNode.textStyle?.color ?? "#e6e6e6");
   const [googleFontFamilies, setGoogleFontFamilies] = useState<string[]>(cachedGoogleFonts ?? FALLBACK_GOOGLE_FONTS);
   const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
+  const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
   const [highlightedFontIndex, setHighlightedFontIndex] = useState(0);
   const fontMenuRef = useRef<HTMLDivElement | null>(null);
+  const presetMenuRef = useRef<HTMLDivElement | null>(null);
   const fontOptions = ["", ...googleFontFamilies];
 
   useEffect(() => {
@@ -345,19 +356,22 @@ export function RightSidebar({
   }, [selectedNode.type]);
 
   useEffect(() => {
-    if (!isFontMenuOpen) return;
+    if (!isFontMenuOpen && !isPresetMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
       if (!fontMenuRef.current?.contains(target)) {
         setIsFontMenuOpen(false);
       }
+      if (!presetMenuRef.current?.contains(target)) {
+        setIsPresetMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isFontMenuOpen]);
+  }, [isFontMenuOpen, isPresetMenuOpen]);
 
   useEffect(() => {
     if (!isFontMenuOpen) return;
@@ -514,11 +528,11 @@ export function RightSidebar({
       : "");
 
   return (
-      <div className="w-full lg:w-80 h-full min-h-0 bg-[#0a0a0a] border-l border-white/5 flex flex-col overflow-hidden">
+      <div className="panel-3d inspector-compact w-full lg:w-80 h-full min-h-0 bg-[#0a0a0a] border-l border-white/5 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 gap-3">
           <div className="min-w-0">
             <div className="text-[10px] text-[#737373] uppercase tracking-wider">Inspector</div>
-            <div className="text-[#fafafa] text-base font-light truncate">
+            <div className="inspector-node-title text-[#fafafa] text-base font-light truncate">
               {title || "Untitled"}
             </div>
             <div className="text-[10px] text-[#737373] uppercase tracking-wider mt-1">
@@ -558,7 +572,7 @@ export function RightSidebar({
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6 border-b border-white/5">
+        <div className="px-4 py-4 border-b border-white/5">
           {selectedNode.type !== "text" && (
             <>
               <div className="text-[10px] text-[#737373] mb-3 uppercase tracking-wider font-light">
@@ -567,7 +581,7 @@ export function RightSidebar({
               <button
                 type="button"
                 onClick={onOpenPreview}
-                className="w-full aspect-video bg-white/5 border border-white/5 rounded-none flex items-center justify-center overflow-hidden hover:border-white/20 transition-colors cursor-zoom-in"
+                className="w-full aspect-[16/8.5] bg-white/5 border border-white/5 rounded-none flex items-center justify-center overflow-hidden hover:border-white/20 transition-colors cursor-zoom-in"
                 aria-label="Open preview"
               >
                 {previewSrc ? (
@@ -602,7 +616,7 @@ export function RightSidebar({
                   setOpacity(nextOpacity);
                   onUpdateOpacity(nextOpacity);
                 }}
-                className="w-full h-0.5 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
+                className="compact-range w-full h-0.5 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
               />
               <div className="mt-4 flex items-center justify-between">
                 <label className="text-xs text-[#737373] block font-light">
@@ -630,26 +644,39 @@ export function RightSidebar({
             <label className="text-xs text-[#737373] mb-1.5 block font-light">
               Layer Preset
             </label>
-            <select
-              value={selectedNode.preset ?? "none"}
-              onChange={(event) =>
-                onUpdateNode(selectedNode.id, {
-                  preset:
-                    event.target.value === "none"
-                      ? undefined
-                      : (event.target.value as NodeData["preset"]),
-                })
-              }
-              className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-            >
-              <option className="bg-[#0a0a0a]" value="none">None</option>
-              <option className="bg-[#0a0a0a]" value="zine">Zine</option>
-              <option className="bg-[#0a0a0a]" value="acid">Acid</option>
-              <option className="bg-[#0a0a0a]" value="retro">Retro</option>
-              <option className="bg-[#0a0a0a]" value="mono">Mono</option>
-              <option className="bg-[#0a0a0a]" value="neon">Neon</option>
-              <option className="bg-[#0a0a0a]" value="paper">Paper</option>
-            </select>
+            <div className="relative" ref={presetMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsPresetMenuOpen((prev) => !prev)}
+                className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+              >
+                {LAYER_PRESET_OPTIONS.find((option) => option.value === (selectedNode.preset ?? "none"))?.label ?? "None"}
+              </button>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
+              {isPresetMenuOpen && (
+                <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-30 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                  {LAYER_PRESET_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onUpdateNode(selectedNode.id, {
+                          preset: option.value === "none" ? undefined : option.value,
+                        });
+                        setIsPresetMenuOpen(false);
+                      }}
+                      className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                        (selectedNode.preset ?? "none") === option.value
+                          ? "text-[#fafafa] bg-white/10"
+                          : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           {selectedNode.type === "text" && (
             <div className="mt-5 border-t border-white/10 pt-4 space-y-4">
@@ -661,11 +688,12 @@ export function RightSidebar({
                   <button
                     type="button"
                     onClick={() => setIsFontMenuOpen((prev) => !prev)}
-                    className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-left"
+                    className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-left"
                     style={{ fontFamily: textFontFamily ? `"${textFontFamily}", var(--font-sans)` : "var(--font-sans)" }}
                   >
                     {textFontFamily || "Default Font"}
                   </button>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
                   {isFontMenuOpen && (
                     <div className="absolute left-0 right-0 mt-1 max-h-56 overflow-y-auto border border-white/10 bg-[#0a0a0a] z-20">
                       <button

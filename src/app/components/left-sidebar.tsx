@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Layers, ChevronDown, Plus, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn } from "lucide-react";
 import { ScrollArea } from "../components/ui/scroll-area";
 
 interface LeftSidebarProps {
@@ -24,6 +24,11 @@ interface LeftSidebarProps {
   onDeleteCanvas: () => void;
   activeTool: "select" | "brush" | "eraser";
   onToolChange: (tool: "select" | "brush" | "eraser") => void;
+  onAddLayer: () => void;
+  onAddTextLayer: () => void;
+  onImportFont: (file: File) => void;
+  zoomLevel: number;
+  onZoomChange: (nextZoom: number) => void;
 }
 
 export function LeftSidebar({
@@ -48,13 +53,31 @@ export function LeftSidebar({
   onDeleteCanvas,
   activeTool,
   onToolChange,
+  onAddLayer,
+  onAddTextLayer,
+  onImportFont,
+  zoomLevel,
+  onZoomChange,
 }: LeftSidebarProps) {
+  const presetOptions: Array<{ value: LeftSidebarProps["canvasPreset"]; label: string }> = [
+    { value: "none", label: "None" },
+    { value: "zine", label: "Zine" },
+    { value: "acid", label: "Acid" },
+    { value: "retro", label: "Retro" },
+    { value: "mono", label: "Mono" },
+    { value: "neon", label: "Neon" },
+    { value: "paper", label: "Paper" },
+  ];
   const [isRenaming, setIsRenaming] = useState(false);
   const currentCanvas = canvases.find((canvas) => canvas.id === currentCanvasId);
   const [draftName, setDraftName] = useState(currentCanvas?.name ?? "");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [draftLayerTitle, setDraftLayerTitle] = useState("");
+  const [isCanvasMenuOpen, setIsCanvasMenuOpen] = useState(false);
+  const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
+  const canvasMenuRef = useRef<HTMLDivElement | null>(null);
+  const presetMenuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!isRenaming) {
       setDraftName(currentCanvas?.name ?? "");
@@ -65,9 +88,22 @@ export function LeftSidebar({
       setIsRenaming(true);
     }
   }, [currentCanvas?.id]);
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (canvasMenuRef.current && !canvasMenuRef.current.contains(target)) {
+        setIsCanvasMenuOpen(false);
+      }
+      if (presetMenuRef.current && !presetMenuRef.current.contains(target)) {
+        setIsPresetMenuOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, []);
   if (isCollapsed) {
     return (
-      <div className="h-full w-full lg:basis-[3.5rem] lg:min-w-[3.5rem] lg:max-w-[3.5rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 overflow-hidden">
+      <div className="panel-3d h-full w-full lg:basis-[3.5rem] lg:min-w-[3.5rem] lg:max-w-[3.5rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col items-center py-6 overflow-hidden">
         <button
           onClick={onToggleCollapse}
           className="p-2 hover:bg-white/5 transition-colors rounded-none"
@@ -79,17 +115,17 @@ export function LeftSidebar({
   }
 
   return (
-    <div className="h-full w-full lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col overflow-hidden">
+    <div className="panel-3d h-full w-full lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] bg-[#0a0a0a] border-r border-white/5 flex flex-col overflow-hidden">
       {/* Header spacer */}
       <div className="flex-shrink-0 h-0" />
 
       {/* Canvas Selector */}
-      <div className="flex-shrink-0 px-6 pt-2 pb-4 border-b border-white/5 overflow-hidden">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-white/5 overflow-hidden">
         <label className="text-[10px] text-[#737373] mb-2 block uppercase tracking-wider font-light">
           Canvas
         </label>
         <>
-          <div className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-visible z-20" ref={canvasMenuRef}>
             {isRenaming ? (
               <input
                 value={draftName}
@@ -115,28 +151,45 @@ export function LeftSidebar({
               />
             ) : (
               <>
-                <select
-                  value={currentCanvasId}
-                  onChange={(e) => onCanvasChange(e.target.value)}
-                  className="w-full h-10 min-w-0 bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 pr-8 text-sm font-light appearance-none hover:border-white/20 focus:border-white/30 focus:outline-none transition-colors cursor-pointer rounded-none overflow-hidden text-ellipsis whitespace-nowrap"
+                <button
+                  type="button"
+                  onClick={() => setIsCanvasMenuOpen((prev) => !prev)}
+                  className="w-full h-10 min-w-0 bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 pr-8 text-sm font-light hover:border-white/20 focus:border-white/30 focus:outline-none transition-colors cursor-pointer rounded-none overflow-hidden text-ellipsis whitespace-nowrap text-center"
                 >
-                  {canvases.map((canvas) => (
-                    <option key={canvas.id} value={canvas.id} className="bg-[#0a0a0a]">
-                      {canvas.name || " "}
-                    </option>
-                  ))}
-                </select>
+                  {currentCanvas?.name || " "}
+                </button>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
+                {isCanvasMenuOpen && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-30 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                    {canvases.map((canvas) => (
+                      <button
+                        key={canvas.id}
+                        type="button"
+                        onClick={() => {
+                          onCanvasChange(canvas.id);
+                          setIsCanvasMenuOpen(false);
+                        }}
+                        className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                          canvas.id === currentCanvasId
+                            ? "text-[#fafafa] bg-white/10"
+                            : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                        }`}
+                      >
+                        {canvas.name || "Untitled"}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
-          <div className="mt-2 flex items-center gap-2 overflow-hidden w-full">
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_2.2rem_2.2rem] items-center gap-2 overflow-hidden w-full">
             <button
               onClick={() => {
                 onCreateCanvas();
                 setIsRenaming(true);
               }}
-              className="flex-1 h-10 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+              className="w-full h-10 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
             >
               <Plus className="w-3 h-3" />
               New Canvas
@@ -146,14 +199,14 @@ export function LeftSidebar({
                 setDraftName(currentCanvas?.name ?? "");
                 setIsRenaming(true);
               }}
-              className="h-10 w-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 rounded-none transition-colors flex items-center justify-center flex-shrink-0"
+              className="h-10 w-full border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 rounded-none transition-colors flex items-center justify-center"
               aria-label="Rename canvas"
             >
               <Pencil className="w-3 h-3" />
             </button>
             <button
               onClick={onDeleteCanvas}
-              className="h-10 w-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 rounded-none transition-colors flex items-center justify-center flex-shrink-0"
+              className="h-10 w-full border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 rounded-none transition-colors flex items-center justify-center"
               aria-label="Delete canvas"
             >
               <Trash2 />
@@ -165,31 +218,44 @@ export function LeftSidebar({
       {/* Layers */}
       <div className="flex-1 min-h-0">
         <ScrollArea className="h-full">
-          <div className="px-6 py-4 min-w-0">
-            <div className="mb-3 overflow-hidden">
+          <div className="px-4 py-4 min-w-0">
+            <div className="mb-4 overflow-visible relative z-10">
               <label className="text-[10px] text-[#737373] uppercase tracking-wider block mb-2">
                 Canvas Preset
               </label>
-              <div className="relative w-full overflow-hidden">
-                <select
-                  value={canvasPreset}
-                  onChange={(event) =>
-                    onCanvasPresetChange(event.target.value as LeftSidebarProps["canvasPreset"])
-                  }
-                  className="w-full h-10 min-w-0 bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 pr-8 text-sm font-light appearance-none hover:border-white/20 focus:border-white/30 focus:outline-none transition-colors cursor-pointer rounded-none overflow-hidden text-ellipsis whitespace-nowrap"
+              <div className="relative w-full overflow-visible z-20" ref={presetMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsPresetMenuOpen((prev) => !prev)}
+                  className="w-full h-10 min-w-0 bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 pr-8 text-sm font-light hover:border-white/20 focus:border-white/30 focus:outline-none transition-colors cursor-pointer rounded-none overflow-hidden text-ellipsis whitespace-nowrap text-center"
                 >
-                  <option className="bg-[#0a0a0a]" value="none">None</option>
-                  <option className="bg-[#0a0a0a]" value="zine">Zine</option>
-                  <option className="bg-[#0a0a0a]" value="acid">Acid</option>
-                  <option className="bg-[#0a0a0a]" value="retro">Retro</option>
-                  <option className="bg-[#0a0a0a]" value="mono">Mono</option>
-                  <option className="bg-[#0a0a0a]" value="neon">Neon</option>
-                  <option className="bg-[#0a0a0a]" value="paper">Paper</option>
-                </select>
+                  {presetOptions.find((option) => option.value === canvasPreset)?.label ?? "None"}
+                </button>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
+                {isPresetMenuOpen && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-30 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                    {presetOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          onCanvasPresetChange(option.value);
+                          setIsPresetMenuOpen(false);
+                        }}
+                        className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                          option.value === canvasPreset
+                            ? "text-[#fafafa] bg-white/10"
+                            : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="mb-3 overflow-hidden">
+            <div className="mb-4 overflow-hidden">
               <label className="text-[10px] text-[#737373] uppercase tracking-wider block mb-2">
                 Canvas Background
               </label>
@@ -208,15 +274,15 @@ export function LeftSidebar({
                 />
               </div>
             </div>
-            <div className="mt-4 mb-3">
+            <div className="mb-4">
               <div className="text-[10px] text-[#737373] uppercase tracking-wider font-light mb-2">
                 Tools
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 min-w-0">
                 <button
                   type="button"
                   onClick={() => onToolChange("select")}
-                  className={`control-pill h-10 px-2 border text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 ${
+                  className={`control-pill w-full min-w-0 h-10 px-2 border text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden ${
                     activeTool === "select"
                       ? "border-white/30 bg-white/10 text-[#fafafa]"
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -228,7 +294,7 @@ export function LeftSidebar({
                 <button
                   type="button"
                   onClick={() => onToolChange("brush")}
-                  className={`control-pill h-10 px-2 border text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 ${
+                  className={`control-pill w-full min-w-0 h-10 px-2 border text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden ${
                     activeTool === "brush"
                       ? "border-white/30 bg-white/10 text-[#fafafa]"
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -240,7 +306,7 @@ export function LeftSidebar({
                 <button
                   type="button"
                   onClick={() => onToolChange("eraser")}
-                  className={`control-pill h-10 px-2 border text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 ${
+                  className={`control-pill w-full min-w-0 h-10 px-2 border text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden ${
                     activeTool === "eraser"
                       ? "border-white/30 bg-white/10 text-[#fafafa]"
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -249,6 +315,73 @@ export function LeftSidebar({
                   <Eraser className="tool-mode-icon tool-mode-icon-eraser" />
                   Eraser
                 </button>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={onAddLayer}
+                  className="control-pill w-full min-w-0 h-10 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden"
+                >
+                  <Plus />
+                  Add Layer
+                </button>
+                <button
+                  type="button"
+                  onClick={onAddTextLayer}
+                  className="control-pill w-full min-w-0 h-10 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden"
+                >
+                  <Type />
+                  Add Text
+                </button>
+                <label className="control-pill w-full min-w-0 h-10 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 cursor-pointer overflow-hidden">
+                  <Upload />
+                  Import Font
+                  <input
+                    type="file"
+                    accept=".ttf,.otf,.woff,.woff2,.json"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      onImportFont(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+              <div className="mt-2 min-w-0 overflow-hidden">
+                <div className="grid grid-cols-2 gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => onZoomChange(zoomLevel - 10)}
+                    className="control-pill w-full min-w-0 h-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                    aria-label="Zoom out"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onZoomChange(zoomLevel + 10)}
+                    className="control-pill w-full min-w-0 h-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                    aria-label="Zoom in"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="mt-2 grid grid-cols-[0.9rem_minmax(0,1fr)_3.25rem] items-center gap-1 min-w-0 overflow-hidden">
+                  <ZoomIn className="w-3.5 h-3.5 text-[#737373]" />
+                  <input
+                    type="range"
+                    min="50"
+                    max="200"
+                    value={zoomLevel}
+                    onChange={(event) => onZoomChange(Number(event.target.value))}
+                    className="compact-range flex-1 min-w-0 h-0.5 bg-white/10 appearance-none cursor-pointer"
+                  />
+                  <span className="text-[10px] text-[#737373] tabular-nums w-[3.25rem] text-right">
+                    {zoomLevel}%
+                  </span>
+                </div>
               </div>
             </div>
             <div className="text-[10px] text-[#737373] uppercase tracking-wider font-light mb-2">
@@ -279,15 +412,15 @@ export function LeftSidebar({
                     setRenamingLayerId(node.id);
                     setDraftLayerTitle(node.title || "");
                   }}
-                  className={`w-full max-w-full h-10 px-2 rounded-none border text-[10px] font-light transition-colors cursor-grab overflow-hidden min-w-0 flex items-center ${
+                  className={`layer-row w-full max-w-full h-10 px-2 rounded-none border text-[10px] font-light transition-colors cursor-grab overflow-hidden min-w-0 flex items-center ${
                     selectedLayerId === node.id
-                      ? "border-white/30 bg-white/10 text-[#fafafa]"
+                      ? "border-white/30 text-[#fafafa] layer-row-selected"
                       : draggingId === node.id
-                      ? "border-white/30 bg-white/5 text-[#fafafa]"
+                      ? "border-white/30 text-[#fafafa] layer-row-selected"
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                   }`}
                 >
-                  <div className="grid grid-cols-[minmax(0,1fr)_3.75rem_5.25rem] items-center gap-1 min-w-0 w-full">
+                  <div className="grid grid-cols-[minmax(0,1fr)_3.2rem_3.2rem] items-center gap-1 min-w-0 w-full">
                     {renamingLayerId === node.id ? (
                       <input
                         value={draftLayerTitle}
@@ -365,9 +498,9 @@ export function LeftSidebar({
         </ScrollArea>
       </div>
 
-      <div className="flex-shrink-0 p-6 border-t border-white/5">
+      <div className="panel-3d flex-shrink-0 px-4 py-3 border-t border-white/5">
         <div className="flex items-center gap-2">
-          <div className="fanzinator-subtitle text-[10px] text-[#737373]">
+          <div className="fanzinator-subtitle text-[8px] text-[#737373]">
           <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
             IRON SIGNAL WORKS
           </a>
