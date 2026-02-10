@@ -3,7 +3,7 @@ import { LeftSidebar } from "./components/left-sidebar";
 import { RightSidebar } from "./components/right-sidebar";
 import { WorldCanvas } from "./components/world-canvas";
 import { NodeData } from "./components/world-node";
-import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Info, Frame, Download, Crop, Link2, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Frame, Download, Crop, Link2, Info, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown } from "lucide-react";
 
 const STORAGE_KEY = "fanzinator:canvas-editor:v2";
 const RESET_KEY = "fanzinator:force-reset:v1";
@@ -1985,8 +1985,8 @@ export default function App() {
         </div>
       )}
       {!isPlaying && (
-      <div className="print-hide flex-shrink-0 min-h-16 px-3 lg:px-8 py-2 lg:py-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 border-b border-white/5 bg-[#0a0a0a]">
-        <div className="flex items-center justify-between">
+      <div className="print-hide flex-shrink-0 min-h-16 px-3 lg:px-0 py-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
+        <div className="flex items-center justify-between lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] lg:px-6">
           <div className="flex flex-col items-start gap-0 leading-tight">
             <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
               Fanzinator
@@ -2018,152 +2018,155 @@ export default function App() {
             </button>
           </div>
         </div>
-        <div className="w-full lg:w-auto overflow-x-auto">
-          <div className="grid grid-rows-2 grid-flow-col auto-cols-max gap-2 lg:gap-3 text-xs text-[#737373] w-max pb-1 lg:pb-0">
-          <button
-            onClick={handleUndo}
-            disabled={historyPast.length === 0}
-            className="h-10 w-10 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            aria-label="Undo"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleRedo}
-            disabled={historyFuture.length === 0}
-            className="h-10 w-10 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            aria-label="Redo"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-          </button>
-          <div className="control-pill h-10 px-3 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center">
-            Back {historyPast.length} | Fwd {historyFuture.length}
-            {historyLog[0] ? ` | ${historyLog[0]}` : ""}
-          </div>
-          <label className="h-10 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center gap-1.5 cursor-pointer">
-            <Upload className="w-3 h-3" />
-            Import
-            <input
-              type="file"
-              accept="image/*,text/plain,application/json,.csv,.md"
-              className="hidden"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                await handleHeaderUpload(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
-          <button
-            onClick={() => {
-              if (!printFrame.enabled) {
-                const zoomScale = zoomToCanvasScale(zoomLevel);
-                const canvasEl = document.querySelector('[data-role="canvas"]') as HTMLElement | null;
-                const canvasRect = canvasEl?.getBoundingClientRect();
-                if (!canvasRect) {
-                  return;
-                }
-                const viewportWidthPx = canvasRect.width;
-                const viewportHeightPx = canvasRect.height;
-                const centerX = canvasRect.left + canvasRect.width / 2;
-                const centerY = canvasRect.top + canvasRect.height / 2;
-                const screenToCanvasX = (screenX: number) =>
-                  centerX + (screenX - centerX - canvasPosition.x) / zoomScale;
-                const screenToCanvasY = (screenY: number) =>
-                  centerY + (screenY - centerY - canvasPosition.y) / zoomScale;
-                const viewMinX = Math.min(
-                  screenToCanvasX(canvasRect.left),
-                  screenToCanvasX(canvasRect.right)
-                );
-                const viewMaxX = Math.max(
-                  screenToCanvasX(canvasRect.left),
-                  screenToCanvasX(canvasRect.right)
-                );
-                const viewMinY = Math.min(
-                  screenToCanvasY(canvasRect.top),
-                  screenToCanvasY(canvasRect.bottom)
-                );
-                const viewMaxY = Math.max(
-                  screenToCanvasY(canvasRect.top),
-                  screenToCanvasY(canvasRect.bottom)
-                );
-                const viewWidth = Math.max(1, viewMaxX - viewMinX);
-                const viewHeight = Math.max(1, viewMaxY - viewMinY);
-                const frameWidth = Math.min(480, Math.max(120, viewWidth * 0.7), viewWidth);
-                const frameHeight = Math.min(320, Math.max(90, viewHeight * 0.7), viewHeight);
-                const centeredX = viewMinX + (viewWidth - frameWidth) / 2;
-                const centeredY = viewMinY + (viewHeight - frameHeight) / 2;
-                const clampedX = Math.min(Math.max(centeredX, viewMinX), viewMaxX - frameWidth);
-                const clampedY = Math.min(Math.max(centeredY, viewMinY), viewMaxY - frameHeight);
-                setPrintFrame({
-                  x: clampedX,
-                  y: clampedY,
-                  width: frameWidth,
-                  height: frameHeight,
-                  enabled: true,
-                });
-              } else {
-                setPrintFrame((prev) => ({
-                  ...prev,
-                  enabled: false,
-                }));
-              }
-            }}
-            className={`h-10 w-[156px] px-3 rounded-none border text-[10px] uppercase tracking-wider transition-colors ${
-              printFrame.enabled
-                ? "border-white/20 text-[#fafafa] bg-white/5"
-                : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
-            }`}
-          >
-            <span className="inline-flex items-center justify-center gap-1.5 w-full">
-              <Crop className="w-3 h-3" />
-              {printFrame.enabled ? "Hide Export Snip" : "Export Snip"}
-            </span>
-          </button>
-          <button
-            onClick={openExportPanel}
-            className="h-10 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center gap-1.5"
-          >
-            <Download className="w-3 h-3" />
-            Download
-          </button>
-          <button
-            onClick={() => setShowPrintArea((prev) => !prev)}
-            className={`h-10 w-[156px] px-3 rounded-none border text-[10px] uppercase tracking-wider transition-colors ${
-              showPrintArea
-                ? "border-white/20 text-[#fafafa] bg-white/5"
-                : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
-            }`}
-          >
-            <span className="inline-flex items-center justify-center gap-1.5 w-full">
-              <Frame className="w-3 h-3" />
-              {showPrintArea ? "Hide Print Area" : "Show Print Area"}
-            </span>
-          </button>
-          <button
-            onClick={() => {
-              void handleShareVisibleCanvasImageLink();
-            }}
-            className="h-10 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center gap-1.5"
-          >
-            <Link2 className="w-3 h-3" />
-            Share Image Link
-          </button>
-          <button
-            onClick={handlePrintCanvas}
-            className="h-10 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center gap-1.5"
-          >
-            <Printer className="w-3 h-3" />
-            Print
-          </button>
-          <button
-            onClick={() => setShowAbout(true)}
-            className="h-10 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center gap-1.5"
-          >
-            <Info className="w-3 h-3" />
-            About
-          </button>
+        <div className="w-full lg:flex-1 lg:flex lg:justify-end overflow-hidden">
+          <div className="flex flex-col gap-2 text-xs text-[#737373] w-full lg:w-auto pb-1 lg:pb-0">
+            <div className="grid grid-cols-5 gap-2">
+              <div className="control-pill w-[10.5rem] max-w-full border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center justify-start overflow-hidden">
+                <span className="shrink-0">Back {historyPast.length} | Fwd {historyFuture.length}</span>
+                <span className="mx-1 shrink-0">|</span>
+                <span className="min-w-0 truncate">{historyLog[0] ?? "Ready"}</span>
+              </div>
+              <label className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center cursor-pointer">
+                <Upload />
+                Import
+                <input
+                  type="file"
+                  accept="image/*,text/plain,application/json,.csv,.md"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    await handleHeaderUpload(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <button
+                onClick={() => {
+                  if (!printFrame.enabled) {
+                    const zoomScale = zoomToCanvasScale(zoomLevel);
+                    const canvasEl = document.querySelector('[data-role="canvas"]') as HTMLElement | null;
+                    const canvasRect = canvasEl?.getBoundingClientRect();
+                    if (!canvasRect) {
+                      return;
+                    }
+                    const viewportWidthPx = canvasRect.width;
+                    const viewportHeightPx = canvasRect.height;
+                    const centerX = canvasRect.left + canvasRect.width / 2;
+                    const centerY = canvasRect.top + canvasRect.height / 2;
+                    const screenToCanvasX = (screenX: number) =>
+                      centerX + (screenX - centerX - canvasPosition.x) / zoomScale;
+                    const screenToCanvasY = (screenY: number) =>
+                      centerY + (screenY - centerY - canvasPosition.y) / zoomScale;
+                    const viewMinX = Math.min(
+                      screenToCanvasX(canvasRect.left),
+                      screenToCanvasX(canvasRect.right)
+                    );
+                    const viewMaxX = Math.max(
+                      screenToCanvasX(canvasRect.left),
+                      screenToCanvasX(canvasRect.right)
+                    );
+                    const viewMinY = Math.min(
+                      screenToCanvasY(canvasRect.top),
+                      screenToCanvasY(canvasRect.bottom)
+                    );
+                    const viewMaxY = Math.max(
+                      screenToCanvasY(canvasRect.top),
+                      screenToCanvasY(canvasRect.bottom)
+                    );
+                    const viewWidth = Math.max(1, viewMaxX - viewMinX);
+                    const viewHeight = Math.max(1, viewMaxY - viewMinY);
+                    const frameWidth = Math.min(480, Math.max(120, viewWidth * 0.7), viewWidth);
+                    const frameHeight = Math.min(320, Math.max(90, viewHeight * 0.7), viewHeight);
+                    const centeredX = viewMinX + (viewWidth - frameWidth) / 2;
+                    const centeredY = viewMinY + (viewHeight - frameHeight) / 2;
+                    const clampedX = Math.min(Math.max(centeredX, viewMinX), viewMaxX - frameWidth);
+                    const clampedY = Math.min(Math.max(centeredY, viewMinY), viewMaxY - frameHeight);
+                    setPrintFrame({
+                      x: clampedX,
+                      y: clampedY,
+                      width: frameWidth,
+                      height: frameHeight,
+                      enabled: true,
+                    });
+                  } else {
+                    setPrintFrame((prev) => ({
+                      ...prev,
+                      enabled: false,
+                    }));
+                  }
+                }}
+                className={`control-pill w-[10.5rem] border text-[10px] uppercase tracking-wider transition-colors ${
+                  printFrame.enabled
+                    ? "border-white/20 text-[#fafafa] bg-white/5"
+                    : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                }`}
+              >
+                <Crop />
+                {printFrame.enabled ? "Hide Export Snip" : "Export Snip"}
+              </button>
+              <button
+                onClick={() => setShowPrintArea((prev) => !prev)}
+                className={`control-pill w-[10.5rem] border text-[10px] uppercase tracking-wider transition-colors ${
+                  showPrintArea
+                    ? "border-white/20 text-[#fafafa] bg-white/5"
+                    : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                }`}
+              >
+                <Frame />
+                {showPrintArea ? "Hide Print Area" : "Show Print Area"}
+              </button>
+              <button
+                onClick={() => {
+                  void handleShareVisibleCanvasImageLink();
+                }}
+                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+              >
+                <Link2 />
+                Share Image Link
+              </button>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              <button
+                onClick={handleUndo}
+                disabled={historyPast.length === 0}
+                className="control-pill w-[10.5rem] border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Undo"
+              >
+                <RotateCcw />
+                Undo
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={historyFuture.length === 0}
+                className="control-pill w-[10.5rem] border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Redo"
+              >
+                <RotateCw />
+                Redo
+              </button>
+              <button
+                onClick={openExportPanel}
+                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+              >
+                <Download />
+                Download
+              </button>
+              <button
+                onClick={handlePrintCanvas}
+                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+              >
+                <Printer />
+                Print
+              </button>
+              <button
+                onClick={() => setShowAbout(true)}
+                className="control-pill w-[10.5rem] border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+              >
+                <Info />
+                About
+              </button>
+            </div>
           </div>
         </div>
       </div>

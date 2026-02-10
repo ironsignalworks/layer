@@ -222,7 +222,7 @@ export function LeftSidebar({
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                   }`}
                 >
-                  <MousePointer2 className="w-3 h-3" />
+                  <MousePointer2 className="w-4 h-4 stroke-[2.2]" />
                   Select
                 </button>
                 <button
@@ -234,7 +234,7 @@ export function LeftSidebar({
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                   }`}
                 >
-                  <Pencil className="w-3 h-3" />
+                  <Pencil className="w-4 h-4 stroke-[2.2]" />
                   Brush
                 </button>
                 <button
@@ -246,7 +246,7 @@ export function LeftSidebar({
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                   }`}
                 >
-                  <Eraser className="w-3 h-3" />
+                  <Eraser className="w-4 h-4 stroke-[2.2]" />
                   Eraser
                 </button>
               </div>
@@ -334,9 +334,9 @@ export function LeftSidebar({
                         aria-label={node.visible ? "Hide layer" : "Show layer"}
                       >
                         {node.visible ? (
-                          <Eye />
+                          <Eye className="w-3.5 h-3.5" />
                         ) : (
-                          <EyeOff />
+                          <EyeOff className="w-3.5 h-3.5" />
                         )}
                       </button>
                       <button
@@ -366,10 +366,12 @@ export function LeftSidebar({
       </div>
 
       <div className="flex-shrink-0 p-6 border-t border-white/5">
-        <div className="fanzinator-subtitle text-[10px] text-[#737373]">
+        <div className="flex items-center gap-2">
+          <div className="fanzinator-subtitle text-[10px] text-[#737373]">
           <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
             IRON SIGNAL WORKS
           </a>
+          </div>
         </div>
       </div>
     </div>

@@ -111,6 +111,7 @@ label.cursor-pointer {
   --control-font: 0.605rem;    /* +10% */
   --control-pad-x: 0.44rem;    /* +10% */
   --control-gap: 0.22rem;      /* +10% */
+  --control-icon-size: 0.9rem;
 }
 
 [data-role="app-shell"] :is(
@@ -122,38 +123,38 @@ label.cursor-pointer {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--control-height);
-  height: var(--control-height);
-  padding-left: var(--control-pad-x);
-  padding-right: var(--control-pad-x);
-  font-size: var(--control-font);
+  min-height: var(--control-height) !important;
+  height: var(--control-height) !important;
+  padding-left: var(--control-pad-x) !important;
+  padding-right: var(--control-pad-x) !important;
+  font-size: var(--control-font) !important;
   line-height: 1;
   text-align: center;
   letter-spacing: 0.04em;
-  gap: var(--control-gap);
+  gap: var(--control-gap) !important;
   border-radius: 0;
 }
 
 [data-role="app-shell"] :is(button, [role="button"], label.cursor-pointer) :is(svg) {
-  width: 0.9rem;
-  height: 0.9rem;
+  width: var(--control-icon-size) !important;
+  height: var(--control-icon-size) !important;
 }
 
 [data-role="app-shell"] .control-pill {
-  min-height: var(--control-height);
-  height: var(--control-height);
-  padding-left: var(--control-pad-x);
-  padding-right: var(--control-pad-x);
-  font-size: var(--control-font);
+  min-height: var(--control-height) !important;
+  height: var(--control-height) !important;
+  padding-left: var(--control-pad-x) !important;
+  padding-right: var(--control-pad-x) !important;
+  font-size: var(--control-font) !important;
   line-height: 1;
   letter-spacing: 0.04em;
   border-radius: 0;
 }
 
 [data-role="app-shell"] .control-square {
-  width: var(--control-height);
-  min-width: var(--control-height);
-  height: var(--control-height);
+  width: var(--control-height) !important;
+  min-width: var(--control-height) !important;
+  height: var(--control-height) !important;
   aspect-ratio: 1 / 1;
   padding: 0;
   border-radius: 0;
