@@ -3,7 +3,7 @@ import { LeftSidebar } from "./components/left-sidebar";
 import { RightSidebar } from "./components/right-sidebar";
 import { WorldCanvas } from "./components/world-canvas";
 import { NodeData } from "./components/world-node";
-import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Upload, Frame, Download, Crop, Link2, Info, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Frame, Download, Crop, Link2, Info, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown } from "lucide-react";
 
 const STORAGE_KEY = "fanzinator:canvas-editor:v2";
 const RESET_KEY = "fanzinator:force-reset:v1";
@@ -441,6 +441,53 @@ export default function App() {
     zoom <= 100 ? Math.pow(zoom / 100, LOW_ZOOM_EXPONENT) : 1 + (zoom - 100) / 100;
   const handleZoomChange = (value: number) => {
     setZoomLevel(clampZoom(value));
+  };
+
+  const handleNukeAndRestart = async () => {
+    const shouldProceed = window.confirm(
+      "Nuke will clear saved Fanzinator data/cache and restart the app. Continue?"
+    );
+    if (!shouldProceed) return;
+
+    try {
+      // Remove known keys first.
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(RESET_KEY);
+
+      // Remove any project-scoped keys.
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith("fanzinator:"))
+        .forEach((key) => localStorage.removeItem(key));
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith("fanzinator:"))
+        .forEach((key) => sessionStorage.removeItem(key));
+
+      // Clear Cache Storage entries when available.
+      if ("caches" in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+
+      // Clear IndexedDB databases when API is available.
+      const idbAny = indexedDB as unknown as { databases?: () => Promise<Array<{ name?: string }>> };
+      if (typeof idbAny.databases === "function") {
+        const dbs = await idbAny.databases();
+        await Promise.all(
+          dbs.map(
+            (db) =>
+              new Promise<void>((resolve) => {
+                if (!db.name) return resolve();
+                const request = indexedDB.deleteDatabase(db.name);
+                request.onsuccess = () => resolve();
+                request.onerror = () => resolve();
+                request.onblocked = () => resolve();
+              })
+          )
+        );
+      }
+    } finally {
+      window.location.reload();
+    }
   };
 
   const hasDroppedFiles = (dataTransfer: DataTransfer | null) =>
@@ -2016,7 +2063,7 @@ export default function App() {
               Fanzinator
             </span>
             <span className="fanzinator-subtitle text-[10px] font-light text-[#fafafa]">
-              DIY graphic studio
+              Visual graphics studio
             </span>
           </div>
           <div className="lg:hidden flex items-center gap-2">
@@ -2045,24 +2092,19 @@ export default function App() {
         <div className="w-full lg:flex-1 lg:flex lg:justify-end lg:pr-6 overflow-hidden">
           <div className="flex flex-col gap-2 text-xs text-[#737373] w-full max-w-full pb-1 lg:pb-0">
             <div className="grid grid-cols-5 gap-2">
-              <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center justify-start overflow-hidden">
+              <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center overflow-hidden">
                 <span className="truncate min-w-0">Back {historyPast.length} | Fwd {historyFuture.length} | {historyLog[0] ?? "Ready"}</span>
               </div>
-              <label className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center cursor-pointer">
-                <Upload />
-                Import
-                <input
-                  type="file"
-                  accept="image/*,text/plain,application/json,.csv,.md"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    await handleHeaderUpload(file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleNukeAndRestart();
+                }}
+                className="control-pill w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+                aria-label="Nuke cache and restart"
+              >
+                Nuke
+              </button>
               <button
                 onClick={() => {
                   if (!printFrame.enabled) {
@@ -2237,6 +2279,7 @@ export default function App() {
             onImportFont={handleImportFont}
             zoomLevel={zoomLevel}
             onZoomChange={handleZoomChange}
+            onImportFile={handleHeaderUpload}
           />
         </div>
         )}
@@ -2400,6 +2443,7 @@ export default function App() {
                 onImportFont={handleImportFont}
                 zoomLevel={zoomLevel}
                 onZoomChange={handleZoomChange}
+                onImportFile={handleHeaderUpload}
               />
             </div>
           </div>
@@ -2889,31 +2933,49 @@ export default function App() {
             </div>
             <div className="space-y-5 text-sm text-[#9a9a9a] leading-relaxed">
               <div className="text-base text-[#e8e8e8]">
-                Fanzinator is a focused image-and-text canvas editor for fast visual composition.
+                Fanzinator is a focused visual graphics studio for fast collage, typography, and layer-based composition.
               </div>
               <div>
-                Create multiple canvases, arrange layers in free space, and style text with font, size, color, and alignment controls.
-                Work is auto-saved locally in your browser.
+                Projects are auto-saved locally in your browser. You can manage multiple canvases, reorder layers, and edit image/text/stroke layers from the side panels.
               </div>
+
               <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Build</div>
-                <div>Add Image or Add Text, drag files onto the canvas to import, and manage layers from the left panel.</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Canvas + Layers</div>
+                <div>Create, rename, and delete canvases from the left panel. Blank names auto-generate as canvas1, canvas2, and so on.</div>
+                <div>Set canvas preset/background, toggle layer visibility, drag to reorder, double-click a layer to rename, and use layer delete controls.</div>
+                <div>Arrow keys move selected items on canvas. Shift+drag enables box select.</div>
               </div>
+
               <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Tool Specs (Brush + Eraser)</div>
-                <div>Select a stroke layer to paint or erase directly on that layer. If no layer is selected, Brush creates a new stroke layer.</div>
-                <div>Right-click on the canvas while Brush or Eraser is active to open tool settings.</div>
-                <div>Brush settings: preset (Ink, Marker, Chalk), size, and color.</div>
-                <div>Eraser settings: size and format (Round or Square).</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Tools</div>
+                <div>Left Tools panel includes Select, Brush, Eraser, Add Layer, Add Text, Import Font, and zoom controls.</div>
+                <div>Brush creates stroke layers and supports size, opacity, shape (round/square/triangle), and color.</div>
+                <div>Eraser supports size, opacity, and shape. Ghost pointers show active brush/eraser size on canvas.</div>
+                <div>Right-click on canvas while Brush/Eraser is active opens quick tool settings.</div>
               </div>
+
               <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Edit</div>
-                <div>Use Undo/Redo or Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z, duplicate with Cmd/Ctrl+D, and delete with Delete/Backspace.</div>
-                <div>Pan by dragging empty canvas space, hold Shift and drag for box select, and zoom with mouse wheel.</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Inspector</div>
+                <div>Inspector updates by selection: media preview, title/description, URLs, tags, alt text, transparency, invert, presets, and text styling controls.</div>
+                <div>Text tools include font picker, color, size, weight/style/underline, and alignment.</div>
               </div>
+
               <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Output</div>
-                <div>Use Export Snip to frame visible output, Download for PNG/JPEG/SVG, Share Image Link for quick previews, and Print for page output.</div>
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Edit + Navigation</div>
+                <div>Undo/Redo via buttons or Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z. Duplicate with Cmd/Ctrl+D. Delete with Delete/Backspace.</div>
+                <div>Pan by dragging empty space. Zoom with wheel or zoom controls. Double-click export preview to reset zoom/pan.</div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Export + Output</div>
+                <div>Export modal supports PNG, JPEG, WEBP, SVG, and ICO with resolution scaling, explicit width/height, and optional filter inclusion.</div>
+                <div>Final Pass modes: None, Threshold, Bitmap, Posterize, Duotone with intensity control (raster exports only).</div>
+                <div>Use Export Snip, Download, Share Image Link, and Print from the top controls.</div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Import</div>
+                <div>Main import is in the left footer. You can also drag/drop supported files directly onto the canvas.</div>
               </div>
             </div>
           </div>

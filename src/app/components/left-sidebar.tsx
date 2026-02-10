@@ -29,6 +29,7 @@ interface LeftSidebarProps {
   onImportFont: (file: File) => void;
   zoomLevel: number;
   onZoomChange: (nextZoom: number) => void;
+  onImportFile: (file: File) => Promise<void> | void;
 }
 
 export function LeftSidebar({
@@ -58,6 +59,7 @@ export function LeftSidebar({
   onImportFont,
   zoomLevel,
   onZoomChange,
+  onImportFile,
 }: LeftSidebarProps) {
   const presetOptions: Array<{ value: LeftSidebarProps["canvasPreset"]; label: string }> = [
     { value: "none", label: "None" },
@@ -120,7 +122,7 @@ export function LeftSidebar({
       <div className="flex-shrink-0 h-0" />
 
       {/* Canvas Selector */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-white/5 overflow-hidden">
+      <div className="relative z-40 flex-shrink-0 px-4 py-3 border-b border-white/5 overflow-visible">
         <label className="text-[10px] text-[#737373] mb-2 block uppercase tracking-wider font-light">
           Canvas
         </label>
@@ -160,7 +162,7 @@ export function LeftSidebar({
                 </button>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
                 {isCanvasMenuOpen && (
-                  <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-30 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                  <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-[80] max-h-[min(16rem,calc(100vh-10rem))] overflow-y-auto border border-white/10 bg-[#0a0a0a] rounded-none">
                     {canvases.map((canvas) => (
                       <button
                         key={canvas.id}
@@ -233,7 +235,7 @@ export function LeftSidebar({
                 </button>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
                 {isPresetMenuOpen && (
-                  <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-30 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                  <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-[80] border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
                     {presetOptions.map((option) => (
                       <button
                         key={option.value}
@@ -499,11 +501,26 @@ export function LeftSidebar({
       </div>
 
       <div className="panel-3d flex-shrink-0 px-4 py-3 border-t border-white/5">
-        <div className="flex items-center gap-2">
-          <div className="fanzinator-subtitle text-[8px] text-[#737373]">
-          <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
-            IRON SIGNAL WORKS
-          </a>
+        <div className="flex flex-col items-stretch gap-2">
+          <label className="control-pill w-full h-14 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center gap-1 cursor-pointer uppercase tracking-wider text-[10px] overflow-hidden">
+            <Upload />
+            Import
+            <input
+              type="file"
+              accept="image/*,text/plain,application/json,.csv,.md"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                await onImportFile(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          <div className="fanzinator-subtitle text-[8px] text-[#737373] text-center whitespace-nowrap">
+            <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
+              IRON SIGNAL WORKS
+            </a>
           </div>
         </div>
       </div>
