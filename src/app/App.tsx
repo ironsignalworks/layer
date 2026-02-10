@@ -2539,7 +2539,7 @@ export default function App() {
                   Preview
                 </div>
                 <div
-                  className="w-full h-[300px] lg:h-[430px] border border-white/10 bg-black/30 overflow-hidden"
+                  className="w-full h-[240px] lg:h-[360px] border border-white/10 bg-black/30 overflow-hidden"
                   onWheel={handleExportPreviewWheel}
                   onMouseDown={handleExportPreviewMouseDown}
                   onMouseMove={handleExportPreviewMouseMove}
@@ -2580,7 +2580,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <div className="text-[10px] text-[#737373]">
+                <div className="text-[9px] leading-tight text-[#737373]">
                   Wheel to zoom, drag to pan, double-click to reset.
                 </div>
               </div>
@@ -2845,10 +2845,10 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="text-[11px] text-[#737373]">
+                <div className="text-[10px] leading-tight text-[#737373]">
                   Final Output: {(exportWidth * exportScale).toLocaleString()} x {(exportHeight * exportScale).toLocaleString()} px
                 </div>
-                <div className="text-[11px] text-[#737373]">
+                <div className="text-[10px] leading-tight text-[#737373]">
                   Estimated File Size: {exportEstimatedBytes !== null ? formatBytes(exportEstimatedBytes) : "Calculating..."}
                 </div>
 

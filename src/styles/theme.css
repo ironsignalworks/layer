@@ -89,6 +89,10 @@ body {
   font-family: var(--font-sans);
 }
 
+html {
+  font-size: 90%;
+}
+
 .font-sans {
   font-family: var(--font-sans);
 }
@@ -107,10 +111,10 @@ label.cursor-pointer {
 
 /* Unified control density for pills/buttons/toggles/dropdowns. */
 [data-role="app-shell"] {
-  --control-height: 1.43rem;   /* +10% */
-  --control-font: 0.605rem;    /* +10% */
-  --control-pad-x: 0.44rem;    /* +10% */
-  --control-gap: 0.22rem;      /* +10% */
+  --control-height: 1.3rem;
+  --control-font: 0.55rem;
+  --control-pad-x: 0.4rem;
+  --control-gap: 0.2rem;
   --control-icon-size: 0.9rem;
   --ui-base: #0d0d0d;
   --ui-surface: #161616;
