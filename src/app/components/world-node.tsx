@@ -45,8 +45,8 @@ interface WorldNodeProps {
   node: NodeData;
   isSelected: boolean;
   parallaxOffset: { x: number; y: number };
-  onMouseDown: (event: React.MouseEvent, node: NodeData) => void;
-  onClick: (event: React.MouseEvent, node: NodeData) => void;
+  onPointerDown: (event: React.PointerEvent, node: NodeData) => void;
+  onPointerUp: (event: React.PointerEvent, node: NodeData) => void;
   onUpdateNode?: (id: string, updates: Partial<NodeData>) => void;
   onResizeStart?: (node: NodeData) => void;
   onResize?: (node: NodeData, size: { width: number; height: number }) => void;
@@ -58,8 +58,8 @@ interface WorldNodeProps {
 export function WorldNode({
   node,
   isSelected,
-  onMouseDown,
-  onClick,
+  onPointerDown,
+  onPointerUp,
   onUpdateNode,
   onResizeStart,
   onResize,
@@ -156,18 +156,21 @@ export function WorldNode({
     liveRotationRef.current = null;
   }, [node.rotation]);
 
-  const handleResizeMouseDown = (event: React.MouseEvent) => {
+  const handleResizePointerDown = (event: React.PointerEvent) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     if (!onResize) return;
     onResizeStart?.(node);
+    const pointerId = event.pointerId;
     resizeState.current = {
       startX: event.clientX,
       startY: event.clientY,
       startWidth: size.width,
       startHeight: size.height,
     };
-    const handleMove = (moveEvent: MouseEvent) => {
+    const handleMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
       if (!resizeState.current) return;
       const deltaX = (moveEvent.clientX - resizeState.current.startX) / zoomScale;
       const deltaY = (moveEvent.clientY - resizeState.current.startY) / zoomScale;
@@ -175,20 +178,26 @@ export function WorldNode({
       const nextHeight = Math.max(minSize, resizeState.current.startHeight + deltaY);
       onResize(node, { width: nextWidth, height: nextHeight });
     };
-    const handleUp = () => {
+    const handleUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
       resizeState.current = null;
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
     };
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
+    (event.currentTarget as HTMLElement).setPointerCapture?.(pointerId);
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
   };
 
   const renderedRotation = draftRotation ?? (node.rotation ?? 0);
 
-  const handleRotateMouseDown = (event: React.MouseEvent) => {
+  const handleRotatePointerDown = (event: React.PointerEvent) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
+    const pointerId = event.pointerId;
     const startRotation = node.rotation ?? 0;
     rotationState.current = {
       startX: event.clientX,
@@ -196,7 +205,8 @@ export function WorldNode({
     };
     setDraftRotation(startRotation);
     liveRotationRef.current = startRotation;
-    const handleMove = (moveEvent: MouseEvent) => {
+    const handleMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
       if (!rotationState.current) return;
       const deltaX = moveEvent.clientX - rotationState.current.startX;
       const sensitivity = moveEvent.shiftKey ? 0.1 : 0.35;
@@ -204,17 +214,21 @@ export function WorldNode({
       setDraftRotation(next);
       liveRotationRef.current = next;
     };
-    const handleUp = () => {
+    const handleUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
       const finalRotation = liveRotationRef.current ?? startRotation;
       onUpdateNode?.(node.id, { rotation: Math.round(finalRotation * 10) / 10 });
       rotationState.current = null;
       setDraftRotation(null);
       liveRotationRef.current = null;
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
     };
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
+    (event.currentTarget as HTMLElement).setPointerCapture?.(pointerId);
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
   };
 
   return (
@@ -240,15 +254,20 @@ export function WorldNode({
         duration: draftRotation === null ? 0.3 : 0.06,
         ease: "easeOut",
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onMouseDown={(event) => {
+      onPointerEnter={() => setIsHovered(true)}
+      onPointerLeave={() => setIsHovered(false)}
+      onPointerDown={(event) => {
         event.stopPropagation();
-        onMouseDown(event, node);
+        (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+        onPointerDown(event, node);
       }}
-      onClick={(event) => {
+      onPointerUp={(event) => {
         event.stopPropagation();
-        onClick(event, node);
+        onPointerUp(event, node);
+      }}
+      onPointerCancel={(event) => {
+        event.stopPropagation();
+        onPointerUp(event, node);
       }}
       onDoubleClick={(event) => {
         event.stopPropagation();
@@ -374,7 +393,7 @@ export function WorldNode({
           <button
             type="button"
             aria-label="Rotate layer"
-            onMouseDown={handleRotateMouseDown}
+            onPointerDown={handleRotatePointerDown}
             className="absolute bottom-2 left-2 h-5 w-5 flex items-center justify-center text-white/70 hover:text-white transition-colors cursor-ew-resize"
           >
             <RotateCw className="w-3 h-3" />
@@ -385,7 +404,7 @@ export function WorldNode({
           <button
             type="button"
             aria-label="Resize layer"
-            onMouseDown={handleResizeMouseDown}
+            onPointerDown={handleResizePointerDown}
             className="absolute bottom-2 right-2 h-5 w-5 cursor-nwse-resize flex items-center justify-center text-white/70 hover:text-white transition-colors"
           >
             <MoveDiagonal2 className="w-3 h-3" />

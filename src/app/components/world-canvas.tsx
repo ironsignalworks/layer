@@ -158,6 +158,8 @@ export function WorldCanvas({
   });
   const frameMouseStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const framePointerIdRef = useRef<number | null>(null);
   const moveFrame = useRef<number | null>(null);
   const pendingMove = useRef<{ id: string; x: number; y: number }[] | null>(null);
   const dragMoved = useRef(false);
@@ -357,8 +359,13 @@ export function WorldCanvas({
   };
 
   // Canvas panning / selection
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    activePointerIdRef.current = e.pointerId;
+    canvasRef.current?.setPointerCapture?.(e.pointerId);
+    if (e.pointerType !== "mouse") {
+      e.preventDefault();
+    }
     if (e.target === canvasRef.current || (e.target as HTMLElement).classList.contains("canvas-bg")) {
       const start = toCanvasPoint(e.clientX, e.clientY);
       if (!e.shiftKey && activeTool === "brush") {
@@ -428,9 +435,10 @@ export function WorldCanvas({
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
     const rect = canvasRef.current?.getBoundingClientRect();
-    if (rect && (activeTool === "brush" || activeTool === "eraser")) {
+    if (rect && (activeTool === "brush" || activeTool === "eraser") && e.pointerType === "mouse") {
       setToolCursor({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
@@ -438,10 +446,12 @@ export function WorldCanvas({
       });
     }
     if (isBrushDrawing) {
+      if (e.pointerType !== "mouse") e.preventDefault();
       updateBrushStroke(toCanvasPoint(e.clientX, e.clientY));
       return;
     }
     if (isErasing) {
+      if (e.pointerType !== "mouse") e.preventDefault();
       eraseAtPoint(toCanvasPoint(e.clientX, e.clientY));
       return;
     }
@@ -474,10 +484,6 @@ export function WorldCanvas({
       return;
     }
     if (pendingDrag) {
-      if (e.buttons === 0) {
-        setPendingDrag(null);
-        return;
-      }
       const dx = e.clientX - pendingDrag.startMouse.x;
       const dy = e.clientY - pendingDrag.startMouse.y;
       if (Math.hypot(dx, dy) >= dragThreshold) {
@@ -543,10 +549,6 @@ export function WorldCanvas({
       return;
     }
     if (isDragging) {
-      if (e.buttons === 0) {
-        setIsDragging(false);
-        return;
-      }
       onCanvasPositionChange({
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y,
@@ -554,7 +556,11 @@ export function WorldCanvas({
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (pointerId?: number) => {
+    if (pointerId !== undefined && activePointerIdRef.current !== null && pointerId !== activePointerIdRef.current) {
+      return;
+    }
+    activePointerIdRef.current = null;
     setIsDragging(false);
     if (isBrushDrawing) {
       setIsBrushDrawing(false);
@@ -611,18 +617,12 @@ export function WorldCanvas({
     }
   };
 
-  const handleMouseLeave = () => {
+  const handlePointerLeave = () => {
     setToolCursor((prev) => ({ ...prev, visible: false }));
-    handleMouseUp();
+    if (activePointerIdRef.current === null) {
+      handlePointerUp();
+    }
   };
-
-  useEffect(() => {
-    const handleWindowMouseUp = () => {
-      handleMouseUp();
-    };
-    window.addEventListener("mouseup", handleWindowMouseUp);
-    return () => window.removeEventListener("mouseup", handleWindowMouseUp);
-  });
 
   const handleWheel = (event: React.WheelEvent) => {
     if (event.deltaY === 0) return;
@@ -642,10 +642,13 @@ export function WorldCanvas({
     };
   }, []);
 
-  const handleFrameMouseDown = (event: React.MouseEvent) => {
+  const handleFramePointerDown = (event: React.PointerEvent) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     if (!printFrame.enabled) return;
+    framePointerIdRef.current = event.pointerId;
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
     setIsFrameDragging(true);
     frameStart.current = {
       x: printFrame.x,
@@ -656,10 +659,13 @@ export function WorldCanvas({
     frameMouseStart.current = { x: event.clientX, y: event.clientY };
   };
 
-  const handleFrameResizeMouseDown = (event: React.MouseEvent) => {
+  const handleFrameResizePointerDown = (event: React.PointerEvent) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     if (!printFrame.enabled) return;
+    framePointerIdRef.current = event.pointerId;
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
     setIsFrameResizing(true);
     frameStart.current = {
       x: printFrame.x,
@@ -671,7 +677,8 @@ export function WorldCanvas({
   };
 
   useEffect(() => {
-    const handleMove = (event: MouseEvent) => {
+    const handleMove = (event: PointerEvent) => {
+      if (framePointerIdRef.current !== null && event.pointerId !== framePointerIdRef.current) return;
       if (!printFrame.enabled) return;
       if (isFrameDragging) {
         const delta = toCanvasPoint(event.clientX, event.clientY);
@@ -696,15 +703,19 @@ export function WorldCanvas({
         });
       }
     };
-    const handleUp = () => {
+    const handleUp = (event: PointerEvent) => {
+      if (framePointerIdRef.current !== null && event.pointerId !== framePointerIdRef.current) return;
+      framePointerIdRef.current = null;
       setIsFrameDragging(false);
       setIsFrameResizing(false);
     };
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
     return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
     };
   }, [isFrameDragging, isFrameResizing, printFrame, onPrintFrameChange, zoomScale, canvasPosition]);
 
@@ -738,11 +749,12 @@ export function WorldCanvas({
       } ${
         canvasPreset !== "none" ? `canvas-preset-${canvasPreset}` : ""
       }`}
-      style={{ background: backgroundColor }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
+      style={{ background: backgroundColor, touchAction: "none" }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={(event) => handlePointerUp(event.pointerId)}
+      onPointerCancel={(event) => handlePointerUp(event.pointerId)}
+      onPointerLeave={handlePointerLeave}
       onWheel={handleWheel}
       onContextMenu={handleToolContextMenu}
     >
@@ -782,8 +794,9 @@ export function WorldCanvas({
             onResizeStart={() => onResizeStart()}
             onResize={(target, size) => onResize(target.id, size)}
             onUpdateNode={onUpdateNode}
-            onMouseDown={(event, target) => {
-              if (event.button !== 0) return;
+            onPointerDown={(event, target) => {
+              if (event.pointerType === "mouse" && event.button !== 0) return;
+              activePointerIdRef.current = event.pointerId;
               dragMoved.current = false;
               const additive = event.shiftKey || event.metaKey || event.ctrlKey;
               if (!selectedNodeIds.includes(target.id) && !additive) {
@@ -809,9 +822,27 @@ export function WorldCanvas({
                 startPositions,
               });
             }}
-            onClick={(event, target) => {
-              if (event.button !== 0) return;
+            onPointerUp={(event, target) => {
+              if (event.pointerType === "mouse" && event.button !== 0) return;
+              if (activePointerIdRef.current !== null && event.pointerId !== activePointerIdRef.current) return;
+              activePointerIdRef.current = null;
+              if (pendingDrag) {
+                setPendingDrag(null);
+              }
+              if (draggingNodes) {
+                setDraggingNodes(null);
+                onMoveCommit();
+                setGuideLines({ alignX: null, alignY: null, snapX: null, snapY: null });
+              }
               if (dragMoved.current) return;
+              if (
+                event.pointerType !== "mouse" &&
+                selectedNodeIds.length === 1 &&
+                selectedNodeIds[0] === target.id
+              ) {
+                onClearSelection();
+                return;
+              }
               onNodeClick(target);
             }}
           />
@@ -1118,7 +1149,7 @@ export function WorldCanvas({
                   pointerEvents: "auto",
                   cursor: isFrameDragging ? "grabbing" : "grab",
                 }}
-                onMouseDown={handleFrameMouseDown}
+                onPointerDown={handleFramePointerDown}
               >
                 <div className="absolute top-2 left-2 px-2 py-1 border border-white/30 bg-black/45 text-[10px] uppercase tracking-wider text-white/85 pointer-events-none">
                   Export Snip Area
@@ -1126,7 +1157,7 @@ export function WorldCanvas({
                 <div
                   className="absolute bottom-2 right-2 h-5 w-5 border border-white/60 bg-white/25 text-white/90 flex items-center justify-center"
                   style={{ cursor: "nwse-resize" }}
-                  onMouseDown={handleFrameResizeMouseDown}
+                  onPointerDown={handleFrameResizePointerDown}
                 >
                   <MoveDiagonal2 className="w-3 h-3" />
                 </div>
