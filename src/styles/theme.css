@@ -274,6 +274,13 @@ label.cursor-pointer {
   height: var(--control-height) !important;
 }
 
+[data-role="app-shell"] .inspector-compact .inspector-preview {
+  min-height: 15rem !important;
+  height: 15rem !important;
+  padding: 0 !important;
+  display: flex !important;
+}
+
 [data-role="app-shell"] :is(
   button,
   [role="button"],
@@ -336,6 +343,15 @@ label.cursor-pointer {
   aspect-ratio: 1 / 1;
   padding: 0;
   border-radius: 0;
+}
+
+[data-role="app-shell"] .inspector-compact button.inspector-preview {
+  width: 100% !important;
+  min-height: 15rem !important;
+  height: 15rem !important;
+  padding: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 [data-role="app-shell"] .tool-spec-slider {
@@ -508,4 +524,3 @@ label.cursor-pointer {
   --color-primary-text: var(--fanzinator-primary);
   --color-subtle-text: var(--fanzinator-subtle);
 }
-

@@ -581,7 +581,7 @@ export function RightSidebar({
               <button
                 type="button"
                 onClick={onOpenPreview}
-                className="w-full aspect-[16/8.5] bg-white/5 border border-white/5 rounded-none flex items-center justify-center overflow-hidden hover:border-white/20 transition-colors cursor-zoom-in"
+                className="inspector-preview w-full bg-white/5 border border-white/5 rounded-none flex items-center justify-center overflow-hidden hover:border-white/20 transition-colors cursor-zoom-in"
                 aria-label="Open preview"
               >
                 {previewSrc ? (

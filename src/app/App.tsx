@@ -33,8 +33,23 @@ type Snapshot = {
   currentCanvasId: string;
 };
 
-type ExportFormat = "png" | "jpeg" | "webp" | "svg" | "ico";
+type ExportFormat = "png" | "jpeg" | "webp" | "svg" | "ico" | "avif" | "gif" | "heic";
 type FinalPassMode = "none" | "threshold" | "bitmap" | "posterize" | "duotone";
+type ExportTemplateId =
+  | "custom"
+  | "a1"
+  | "a2"
+  | "a3"
+  | "a4"
+  | "a5"
+  | "instagram-square"
+  | "instagram-portrait"
+  | "instagram-story"
+  | "tiktok-story"
+  | "youtube-thumb"
+  | "hd"
+  | "full-hd"
+  | "4k";
 type VisualPreset = "zine" | "acid" | "retro" | "mono" | "neon" | "paper";
 type FilterOp =
   | { kind: "grayscale"; value: number }
@@ -43,6 +58,8 @@ type FilterOp =
   | { kind: "saturate"; value: number }
   | { kind: "sepia"; value: number }
   | { kind: "hueRotate"; value: number };
+
+const EXPORT_FORMAT_OPTIONS: ExportFormat[] = ["png", "jpeg", "webp", "svg", "ico", "avif", "gif", "heic"];
 
 const nextAutoCanvasName = (existingNames: Iterable<string>) => {
   const normalized = new Set(Array.from(existingNames, (name) => name.trim().toLowerCase()));
@@ -65,6 +82,28 @@ const initialCanvases: Canvas[] = [
     backgroundColor: "#0a0a0a",
     printOrientation: "portrait",
   },
+];
+
+const EXPORT_TEMPLATES: Array<{
+  id: ExportTemplateId;
+  label: string;
+  width: number;
+  height: number;
+}> = [
+  { id: "custom", label: "Custom", width: 0, height: 0 },
+  { id: "a1", label: "A1 (Portrait) - 2245 x 3179", width: 2245, height: 3179 },
+  { id: "a2", label: "A2 (Portrait) - 1587 x 2245", width: 1587, height: 2245 },
+  { id: "a3", label: "A3 (Portrait) - 1123 x 1587", width: 1123, height: 1587 },
+  { id: "a4", label: "A4 (Portrait) - 794 x 1123", width: 794, height: 1123 },
+  { id: "a5", label: "A5 (Portrait) - 559 x 794", width: 559, height: 794 },
+  { id: "instagram-square", label: "Instagram Square - 1080 x 1080", width: 1080, height: 1080 },
+  { id: "instagram-portrait", label: "Instagram Portrait - 1080 x 1350", width: 1080, height: 1350 },
+  { id: "instagram-story", label: "Instagram Story - 1080 x 1920", width: 1080, height: 1920 },
+  { id: "tiktok-story", label: "TikTok/Reels - 1080 x 1920", width: 1080, height: 1920 },
+  { id: "youtube-thumb", label: "YouTube Thumbnail - 1280 x 720", width: 1280, height: 720 },
+  { id: "hd", label: "HD - 1280 x 720", width: 1280, height: 720 },
+  { id: "full-hd", label: "Full HD - 1920 x 1080", width: 1920, height: 1080 },
+  { id: "4k", label: "4K UHD - 3840 x 2160", width: 3840, height: 2160 },
 ];
 
 const NODE_PRESET_FILTERS: Record<VisualPreset, string> = {
@@ -395,6 +434,7 @@ export default function App() {
   const [exportFormat, setExportFormat] = useState<ExportFormat>("png");
   const [exportWidth, setExportWidth] = useState(1200);
   const [exportHeight, setExportHeight] = useState(800);
+  const [exportTemplate, setExportTemplate] = useState<ExportTemplateId>("custom");
   const [exportScale, setExportScale] = useState<1 | 2 | 3>(1);
   const [exportAutoScale, setExportAutoScale] = useState(true);
   const [exportQuality, setExportQuality] = useState(0.92);
@@ -408,9 +448,13 @@ export default function App() {
   const [exportPreviewPan, setExportPreviewPan] = useState({ x: 0, y: 0 });
   const [isExportPreviewDragging, setIsExportPreviewDragging] = useState(false);
   const [isExportFormatMenuOpen, setIsExportFormatMenuOpen] = useState(false);
+  const [isExportTemplateMenuOpen, setIsExportTemplateMenuOpen] = useState(false);
   const [isExportScaleMenuOpen, setIsExportScaleMenuOpen] = useState(false);
   const [isExportFinalPassMenuOpen, setIsExportFinalPassMenuOpen] = useState(false);
+  const [shareImageUrl, setShareImageUrl] = useState("");
+  const [showShareQr, setShowShareQr] = useState(false);
   const exportFormatMenuRef = useRef<HTMLDivElement | null>(null);
+  const exportTemplateMenuRef = useRef<HTMLDivElement | null>(null);
   const exportScaleMenuRef = useRef<HTMLDivElement | null>(null);
   const exportFinalPassMenuRef = useRef<HTMLDivElement | null>(null);
   const [isFileDragActive, setIsFileDragActive] = useState(false);
@@ -439,6 +483,9 @@ export default function App() {
   const clampPreviewZoom = (value: number) => Math.min(6, Math.max(1, value));
   const zoomToCanvasScale = (zoom: number) =>
     zoom <= 100 ? Math.pow(zoom / 100, LOW_ZOOM_EXPONENT) : 1 + (zoom - 100) / 100;
+  const shareQrCodeUrl = shareImageUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=0&data=${encodeURIComponent(shareImageUrl)}`
+    : "";
   const handleZoomChange = (value: number) => {
     setZoomLevel(clampZoom(value));
   };
@@ -509,6 +556,14 @@ export default function App() {
       mediaQuery.removeEventListener("change", updateViewport);
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (shareImageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(shareImageUrl);
+      }
+    };
+  }, [shareImageUrl]);
 
   useEffect(() => {
     const needsReset = localStorage.getItem(RESET_KEY) !== "done";
@@ -1086,6 +1141,7 @@ export default function App() {
       const bounds = getExportBounds(nodes);
       const nextWidth = Math.max(64, Math.round(bounds.width));
       const nextHeight = Math.max(64, Math.round(bounds.height));
+      setExportTemplate("custom");
       setExportWidth(nextWidth);
       setExportHeight(nextHeight);
       exportAspectRatioRef.current = nextWidth / Math.max(1, nextHeight);
@@ -1103,7 +1159,20 @@ export default function App() {
     });
   };
 
+  const handleSelectExportTemplate = (templateId: ExportTemplateId) => {
+    setExportTemplate(templateId);
+    if (templateId === "custom") return;
+    const selected = EXPORT_TEMPLATES.find((template) => template.id === templateId);
+    if (!selected) return;
+    const nextWidth = Math.max(16, Math.round(selected.width));
+    const nextHeight = Math.max(16, Math.round(selected.height));
+    setExportWidth(nextWidth);
+    setExportHeight(nextHeight);
+    exportAspectRatioRef.current = nextWidth / Math.max(1, nextHeight);
+  };
+
   const handleExportWidthChange = (value: number) => {
+    setExportTemplate("custom");
     const nextWidth = Math.max(16, Math.round(value) || 16);
     if (!exportAutoScale) {
       setExportWidth(nextWidth);
@@ -1116,6 +1185,7 @@ export default function App() {
   };
 
   const handleExportHeightChange = (value: number) => {
+    setExportTemplate("custom");
     const nextHeight = Math.max(16, Math.round(value) || 16);
     if (!exportAutoScale) {
       setExportHeight(nextHeight);
@@ -1197,6 +1267,17 @@ export default function App() {
         resolve(blob);
       }, type, quality);
     });
+
+  const canEncodeCanvasMimeType = (mimeType: string) => {
+    const probe = document.createElement("canvas");
+    probe.width = 1;
+    probe.height = 1;
+    try {
+      return probe.toDataURL(mimeType).startsWith(`data:${mimeType}`);
+    } catch {
+      return false;
+    }
+  };
 
   const buildIcoBlobFromPng = async (pngBlob: Blob, width: number, height: number) => {
     const pngBytes = new Uint8Array(await pngBlob.arrayBuffer());
@@ -1559,11 +1640,21 @@ export default function App() {
         ? "image/jpeg"
         : exportFormat === "webp"
         ? "image/webp"
+        : exportFormat === "avif"
+        ? "image/avif"
+        : exportFormat === "gif"
+        ? "image/gif"
+        : exportFormat === "heic"
+        ? "image/heic"
         : "image/png";
+    if (!canEncodeCanvasMimeType(mimeType)) {
+      window.alert(`${exportFormat.toUpperCase()} export is not supported in this browser. Try PNG, JPEG, or WEBP.`);
+      return;
+    }
     const blob = await blobFromCanvas(
       canvas,
       mimeType,
-      exportFormat === "jpeg" || exportFormat === "webp" ? exportQuality : undefined
+      exportFormat === "jpeg" || exportFormat === "webp" || exportFormat === "avif" ? exportQuality : undefined
     );
     const outputBlob =
       exportFormat === "ico"
@@ -1612,8 +1703,19 @@ export default function App() {
       });
       const blob = await blobFromCanvas(renderCanvas, "image/png");
       const objectUrl = URL.createObjectURL(blob);
-      await navigator.clipboard.writeText(objectUrl);
-      window.alert("Image link copied to clipboard.");
+      setShareImageUrl((prev) => {
+        if (prev.startsWith("blob:")) {
+          URL.revokeObjectURL(prev);
+        }
+        return objectUrl;
+      });
+      setShowShareQr(true);
+      try {
+        await navigator.clipboard.writeText(objectUrl);
+        window.alert("Image link copied to clipboard.");
+      } catch {
+        window.alert("Image link created. Clipboard access is unavailable in this browser.");
+      }
     } catch {
       window.alert("Failed to create share image link.");
     }
@@ -1722,6 +1824,9 @@ export default function App() {
       const target = event.target as Node;
       if (exportFormatMenuRef.current && !exportFormatMenuRef.current.contains(target)) {
         setIsExportFormatMenuOpen(false);
+      }
+      if (exportTemplateMenuRef.current && !exportTemplateMenuRef.current.contains(target)) {
+        setIsExportTemplateMenuOpen(false);
       }
       if (exportScaleMenuRef.current && !exportScaleMenuRef.current.contains(target)) {
         setIsExportScaleMenuOpen(false);
@@ -2089,7 +2194,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        <div className="w-full lg:flex-1 lg:flex lg:justify-end lg:pr-6 overflow-hidden">
+        <div className="w-full lg:flex-1 lg:flex lg:justify-end lg:pr-0 lg:mr-[20rem] overflow-hidden">
           <div className="flex flex-col gap-2 text-xs text-[#737373] w-full max-w-full pb-1 lg:pb-0">
             <div className="grid grid-cols-5 gap-2">
               <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center overflow-hidden">
@@ -2167,7 +2272,7 @@ export default function App() {
                 }`}
               >
                 <Crop />
-                {printFrame.enabled ? "Hide Export Snip" : "Export Snip"}
+                {isMobileViewport ? "Snip" : printFrame.enabled ? "Hide Export Snip" : "Export Snip"}
               </button>
               <button
                 onClick={() => setShowPrintArea((prev) => !prev)}
@@ -2178,7 +2283,7 @@ export default function App() {
                 }`}
               >
                 <Frame />
-                {showPrintArea ? "Hide Print Area" : "Show Print Area"}
+                {isMobileViewport ? "Print Area" : showPrintArea ? "Hide Print Area" : "Show Print Area"}
               </button>
               <button
                 onClick={() => {
@@ -2187,7 +2292,7 @@ export default function App() {
                 className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Link2 />
-                Share Image Link
+                {isMobileViewport ? "Share Link" : "Share Image Link"}
               </button>
             </div>
             <div className="grid grid-cols-5 gap-2">
@@ -2504,6 +2609,57 @@ export default function App() {
         </div>
       )}
 
+      {showShareQr && shareImageUrl && (
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="panel-3d w-[420px] max-w-[94vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-[#fafafa] font-light">Share Image Link</div>
+              <button
+                type="button"
+                onClick={() => setShowShareQr(false)}
+                className="text-xs text-[#737373] hover:text-[#fafafa] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src={shareQrCodeUrl}
+                alt="QR code for exported image link"
+                className="w-56 h-56 border border-white/10 bg-white p-2"
+              />
+              <div className="w-full text-[10px] text-[#737373] uppercase tracking-wider">
+                Link
+              </div>
+              <input
+                type="text"
+                readOnly
+                value={shareImageUrl}
+                className="w-full h-9 bg-transparent border border-white/10 text-[#cfcfcf] px-3 rounded-none text-[11px] font-light focus:outline-none"
+              />
+              <div className="w-full grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(shareImageUrl).catch(() => undefined);
+                  }}
+                  className="h-9 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                >
+                  Copy Link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open(shareImageUrl, "_blank", "noopener,noreferrer")}
+                  className="h-9 rounded-none border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] bg-white/10 hover:bg-white/15 transition-colors"
+                >
+                  Open Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {expandedNode && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="w-[720px] max-w-[92vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5">
@@ -2566,7 +2722,7 @@ export default function App() {
 
       {showExport && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="panel-3d w-[980px] max-w-[96vw] max-h-[92vh] overflow-hidden bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5">
+          <div className="panel-3d w-[980px] max-w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-visible bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">Export Output</div>
               <button
@@ -2629,7 +2785,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="space-y-3 lg:space-y-3">
+              <div className="space-y-3 lg:space-y-3 max-h-[calc(92vh-9rem)] overflow-y-auto pr-3 [scrollbar-gutter:stable]">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-[#737373] mb-1.5 block font-light">Format</label>
@@ -2637,14 +2793,14 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setIsExportFormatMenuOpen((prev) => !prev)}
-                        className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                        className="w-full h-10 bg-[#0a0a0a] border border-white/10 text-[#fafafa] pl-3 pr-8 py-0 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
                       >
                         {exportFormat.toUpperCase()}
                       </button>
                       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
                       {isExportFormatMenuOpen && (
                         <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
-                          {(["png", "jpeg", "webp", "svg", "ico"] as const).map((format) => (
+                          {EXPORT_FORMAT_OPTIONS.map((format) => (
                             <button
                               key={format}
                               type="button"
@@ -2671,7 +2827,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setIsExportScaleMenuOpen((prev) => !prev)}
-                        className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                        className="w-full h-10 bg-[#0a0a0a] border border-white/10 text-[#fafafa] pl-3 pr-8 py-0 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
                       >
                         {exportScale}x
                       </button>
@@ -2698,6 +2854,41 @@ export default function App() {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-[#737373] mb-1.5 block font-light">Template</label>
+                  <div className="relative" ref={exportTemplateMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsExportTemplateMenuOpen((prev) => !prev)}
+                      className="w-full h-10 bg-[#0a0a0a] border border-white/10 text-[#fafafa] pl-3 pr-8 py-0 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                    >
+                      {(EXPORT_TEMPLATES.find((template) => template.id === exportTemplate) ?? EXPORT_TEMPLATES[0]).label}
+                    </button>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
+                    {isExportTemplateMenuOpen && (
+                      <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 max-h-56 overflow-y-auto border border-white/10 bg-[#0a0a0a] rounded-none">
+                        {EXPORT_TEMPLATES.map((template) => (
+                          <button
+                            key={template.id}
+                            type="button"
+                            onClick={() => {
+                              handleSelectExportTemplate(template.id);
+                              setIsExportTemplateMenuOpen(false);
+                            }}
+                            className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                              exportTemplate === template.id
+                                ? "text-[#fafafa] bg-white/10"
+                                : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                            }`}
+                          >
+                            {template.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2813,7 +3004,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => setIsExportFinalPassMenuOpen((prev) => !prev)}
-                          className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 pr-8 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+                          className="w-full h-10 bg-[#0a0a0a] border border-white/10 text-[#fafafa] pl-3 pr-8 py-0 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
                         >
                           {exportFinalPass === "none"
                             ? "None"
@@ -2821,7 +3012,7 @@ export default function App() {
                         </button>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
                         {isExportFinalPassMenuOpen && (
-                          <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                          <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 max-h-40 overflow-y-auto border border-white/10 bg-[#0a0a0a] rounded-none">
                             {(["none", "threshold", "bitmap", "posterize", "duotone"] as const).map((mode) => (
                               <button
                                 key={mode}
@@ -2865,12 +3056,12 @@ export default function App() {
                   </div>
                   {exportFormat === "svg" && exportFinalPass !== "none" && (
                     <div className="mt-2 text-[10px] text-[#737373] uppercase tracking-wider">
-                      Final pass applies to raster exports (png/jpeg/webp/ico), not svg.
+                      Final pass applies to raster exports (png/jpeg/webp/ico/avif/gif/heic), not svg.
                     </div>
                   )}
                 </div>
 
-                {(exportFormat === "jpeg" || exportFormat === "webp") && (
+                {(exportFormat === "jpeg" || exportFormat === "webp" || exportFormat === "avif") && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs text-[#737373] block font-light">Quality</label>
@@ -2968,9 +3159,9 @@ export default function App() {
 
               <div className="space-y-2">
                 <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Export + Output</div>
-                <div>Export modal supports PNG, JPEG, WEBP, SVG, and ICO with resolution scaling, explicit width/height, and optional filter inclusion.</div>
+                <div>Export modal supports PNG, JPEG, WEBP, SVG, ICO, AVIF, GIF, and HEIC with resolution scaling, A-series/digital templates, explicit width/height, and optional filter inclusion.</div>
                 <div>Final Pass modes: None, Threshold, Bitmap, Posterize, Duotone with intensity control (raster exports only).</div>
-                <div>Use Export Snip, Download, Share Image Link, and Print from the top controls.</div>
+                <div>Use Export Snip, Download, Share Image Link with QR, and Print from the top controls.</div>
               </div>
 
               <div className="space-y-2">
