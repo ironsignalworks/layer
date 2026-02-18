@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info } from "lucide-react";
+import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info, Image as ImageIcon } from "lucide-react";
 import { ScrollArea } from "../components/ui/scroll-area";
 
 interface LeftSidebarProps {
@@ -414,7 +414,7 @@ export function LeftSidebar({
                     setRenamingLayerId(node.id);
                     setDraftLayerTitle(node.title || "");
                   }}
-                  className={`layer-row w-full max-w-full h-10 px-2 rounded-none border text-[10px] font-light transition-colors cursor-grab overflow-hidden min-w-0 flex items-center ${
+                  className={`layer-row relative w-full max-w-full h-11 pl-2 pr-1.5 rounded-none border text-[10px] font-light transition-colors cursor-grab overflow-visible min-w-0 flex items-center ${
                     selectedLayerId === node.id
                       ? "border-white/30 text-[#fafafa] layer-row-selected"
                       : draggingId === node.id
@@ -422,7 +422,16 @@ export function LeftSidebar({
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                   }`}
                 >
-                  <div className="grid grid-cols-[minmax(0,1fr)_3.2rem_3.2rem] items-center gap-1 min-w-0 w-full">
+                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#737373]">
+                    {node.type === "text" ? (
+                      <Type className="w-3.5 h-3.5" />
+                    ) : node.type === "image" ? (
+                      <ImageIcon className="w-3.5 h-3.5" />
+                    ) : (
+                      <Pencil className="w-3.5 h-3.5" />
+                    )}
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,1fr)_4.6rem] items-center gap-0.5 min-w-0 w-full">
                     {renamingLayerId === node.id ? (
                       <input
                         value={draftLayerTitle}
@@ -450,10 +459,7 @@ export function LeftSidebar({
                     ) : (
                       <span className="truncate min-w-0">{node.title || "Untitled"}</span>
                     )}
-                    <span className="text-[9px] uppercase tracking-wider text-[#737373] whitespace-nowrap truncate text-right">
-                      {node.type}
-                    </span>
-                    <div className="flex items-center justify-end gap-1 flex-shrink-0">
+                    <div className="grid grid-cols-2 gap-0.5 items-center justify-end flex-shrink-0">
                       <button
                         type="button"
                         onClick={(event) => {
@@ -461,7 +467,7 @@ export function LeftSidebar({
                           event.stopPropagation();
                           onToggleLayerVisibility(node.id, !node.visible);
                         }}
-                        className={`control-square h-10 w-10 flex items-center justify-center rounded-none border transition-colors ${
+                        className={`control-square h-full w-full flex items-center justify-center rounded-none border transition-colors ${
                           node.visible
                             ? "border-white/20 text-[#fafafa] bg-white/5"
                             : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -481,7 +487,7 @@ export function LeftSidebar({
                           event.stopPropagation();
                           onDeleteLayer(node.id);
                         }}
-                        className="control-square h-10 w-10 flex items-center justify-center rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                        className="control-square h-full w-full flex items-center justify-center rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
                         aria-label="Delete layer"
                       >
                         <Trash2 />

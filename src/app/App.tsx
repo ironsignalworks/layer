@@ -3262,6 +3262,31 @@ export default function App() {
               <div className="text-base text-[#e8e8e8]">
                 Fanzinator is a focused visual graphics studio for fast collage, typography, and layer-based composition.
               </div>
+              <div className="space-y-2 border border-white/10 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Skin</div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#737373]">Current: {uiSkinLabel}</div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {UI_SKINS.map((skin) => (
+                    <button
+                      key={skin}
+                      type="button"
+                      onClick={() => setUiSkin(skin)}
+                      className={`h-8 px-2 rounded-none border text-[10px] uppercase tracking-wider transition-colors ${
+                        uiSkin === skin
+                          ? "border-white/30 text-[#fafafa] bg-white/10"
+                          : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                      }`}
+                    >
+                      {UI_SKIN_LABELS[skin]}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-[#737373] uppercase tracking-wider">
+                  Tip: click app name in the header to cycle skins.
+                </div>
+              </div>
               <div>
                 Projects are auto-saved locally in your browser. You can manage multiple canvases, reorder layers, and edit image/text/stroke layers from the side panels.
               </div>
