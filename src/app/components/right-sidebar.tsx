@@ -148,6 +148,8 @@ interface RightSidebarProps {
   onOpenPreview: () => void;
   onUpdateOpacity: (opacity: number) => void;
   onImportFile: (file: File) => Promise<void> | void;
+  onFlipCanvasHorizontal: () => void;
+  onFlipCanvasVertical: () => void;
 }
 
 export function RightSidebar({
@@ -169,6 +171,8 @@ export function RightSidebar({
   onOpenPreview,
   onUpdateOpacity,
   onImportFile,
+  onFlipCanvasHorizontal,
+  onFlipCanvasVertical,
 }: RightSidebarProps) {
   if (activeTool === "brush" || activeTool === "eraser") {
     const spec = activeTool === "brush" ? brushSpec : eraserSpec;
@@ -266,7 +270,7 @@ export function RightSidebar({
   if (!selectedNode) {
     return (
       <div className="w-full lg:w-80 h-full bg-[#0a0a0a] border-l border-white/5 flex items-center justify-center">
-        <div className="text-center text-[#737373] text-sm font-light px-8">
+        <div className="text-center text-[#737373] text-sm font-light px-8 w-full">
           <Eye className="w-6 h-6 mx-auto mb-3 opacity-30" />
           No layer selected
           <div className="mt-2 text-[10px] uppercase tracking-wider">
@@ -286,6 +290,23 @@ export function RightSidebar({
               }}
             />
           </label>
+          <div className="mt-5 text-[10px] text-[#737373] uppercase tracking-wider">Canvas</div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onFlipCanvasHorizontal}
+              className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+            >
+              Flip H
+            </button>
+            <button
+              type="button"
+              onClick={onFlipCanvasVertical}
+              className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+            >
+              Flip V
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -987,6 +1008,27 @@ export function RightSidebar({
               onBlur={() => onUpdateNode(selectedNode.id, { altText })}
               className="w-full bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light placeholder:text-[#737373] focus:border-white/20 focus:outline-none transition-colors"
             />
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-4">
+            <div className="text-[10px] text-[#737373] mb-3 uppercase tracking-wider font-light">
+              Canvas
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={onFlipCanvasHorizontal}
+                className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+              >
+                Flip H
+              </button>
+              <button
+                type="button"
+                onClick={onFlipCanvasVertical}
+                className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+              >
+                Flip V
+              </button>
+            </div>
           </div>
         </div>
       </ScrollArea>

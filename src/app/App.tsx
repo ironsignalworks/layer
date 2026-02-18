@@ -674,7 +674,12 @@ export default function App() {
 
   useEffect(() => {
     const payload = JSON.stringify({ canvases, currentCanvasId });
-    localStorage.setItem(STORAGE_KEY, payload);
+    try {
+      localStorage.setItem(STORAGE_KEY, payload);
+    } catch {
+      // Large imported files can exceed storage quota on mobile browsers.
+      // Keep the editor running even if autosave fails.
+    }
   }, [canvases, currentCanvasId]);
 
   useEffect(() => {
@@ -868,6 +873,52 @@ export default function App() {
             }
           : canvas
       )
+    );
+  };
+
+  const flipCurrentCanvas = (axis: "horizontal" | "vertical") => {
+    if (!currentCanvas) return;
+    if (currentCanvas.nodes.length === 0) return;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    currentCanvas.nodes.forEach((node) => {
+      const size = getNodeSize(node);
+      minX = Math.min(minX, node.x);
+      minY = Math.min(minY, node.y);
+      maxX = Math.max(maxX, node.x + size.width);
+      maxY = Math.max(maxY, node.y + size.height);
+    });
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return;
+    }
+    recordHistory();
+    setCanvases((prev) =>
+      prev.map((canvas) => {
+        if (canvas.id !== currentCanvasId) return canvas;
+        return {
+          ...canvas,
+          nodes: canvas.nodes.map((node) => {
+            const size = getNodeSize(node);
+            const nextX = axis === "horizontal" ? minX + maxX - (node.x + size.width) : node.x;
+            const nextY = axis === "vertical" ? minY + maxY - (node.y + size.height) : node.y;
+            const nextStrokePoints =
+              node.type === "stroke" && node.strokePoints
+                ? node.strokePoints.map((point) => ({
+                    x: axis === "horizontal" ? Math.max(0, size.width - point.x) : point.x,
+                    y: axis === "vertical" ? Math.max(0, size.height - point.y) : point.y,
+                  }))
+                : node.strokePoints;
+            return {
+              ...node,
+              x: nextX,
+              y: nextY,
+              strokePoints: nextStrokePoints,
+            };
+          }),
+        };
+      })
     );
   };
 
@@ -2152,6 +2203,12 @@ export default function App() {
         fontFamily: customFont ? `"${customFont.name}", var(--font-sans)` : "var(--font-sans)",
       }}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[120] focus:border focus:border-white/30 focus:bg-[#0a0a0a] focus:px-3 focus:py-2 focus:text-xs focus:uppercase focus:tracking-wider focus:text-[#fafafa]"
+      >
+        Skip to main content
+      </a>
       {isFileDragActive && !isPlaying && (
         <div className="pointer-events-none fixed inset-0 z-[70] bg-black/55 backdrop-blur-sm flex items-center justify-center">
           <div className="border border-white/25 bg-[#0a0a0a]/80 px-8 py-6 text-center">
@@ -2342,7 +2399,7 @@ export default function App() {
       )}
 
       {/* Main Layout */}
-      <div className="flex flex-1 min-h-0">
+      <main id="main-content" className="flex flex-1 min-h-0">
         {/* Left Sidebar */}
         {!isPlaying && (
         <div className="print-hide hidden lg:block flex-shrink-0 basis-[16rem] min-w-[16rem] max-w-[16rem] overflow-hidden">
@@ -2484,10 +2541,12 @@ export default function App() {
               if (!selectedNode) return;
               updateNode(selectedNode.id, { opacity });
             }}
+            onFlipCanvasHorizontal={() => flipCurrentCanvas("horizontal")}
+            onFlipCanvasVertical={() => flipCurrentCanvas("vertical")}
           />
         </div>
         )}
-      </div>
+      </main>
 
       {!isPlaying && isMobileViewport && showMobileLeftSidebar && (
         <div className="print-hide fixed inset-0 z-[80] lg:hidden">
@@ -2603,6 +2662,8 @@ export default function App() {
                   if (!selectedNode) return;
                   updateNode(selectedNode.id, { opacity });
                 }}
+                onFlipCanvasHorizontal={() => flipCurrentCanvas("horizontal")}
+                onFlipCanvasVertical={() => flipCurrentCanvas("vertical")}
               />
             </div>
           </div>
