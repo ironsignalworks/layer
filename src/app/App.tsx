@@ -3,7 +3,7 @@ import { LeftSidebar } from "./components/left-sidebar";
 import { RightSidebar } from "./components/right-sidebar";
 import { WorldCanvas } from "./components/world-canvas";
 import { NodeData } from "./components/world-node";
-import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Frame, Download, Crop, Link2, Info, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Frame, Download, Crop, Link2, Info, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown, Upload } from "lucide-react";
 
 const STORAGE_KEY = "fanzinator:canvas-editor:v2";
 const RESET_KEY = "fanzinator:force-reset:v1";
@@ -2266,16 +2266,16 @@ export default function App() {
         </div>
         <div className="w-full lg:flex-1 lg:flex lg:justify-end lg:pr-0 lg:mr-[20rem] overflow-hidden">
           <div className="flex flex-col gap-2 text-xs text-[#737373] w-full max-w-full pb-1 lg:pb-0">
-            <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center overflow-hidden">
-              <span className="truncate min-w-0">Back {historyPast.length} | Fwd {historyFuture.length} | {historyLog[0] ?? "Ready"}</span>
-            </div>
             <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
+              <div className="control-pill order-1 lg:order-1 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center overflow-hidden">
+                <span className="truncate min-w-0">Back {historyPast.length} | Fwd {historyFuture.length} | {historyLog[0] ?? "Ready"}</span>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   void handleNukeAndRestart();
                 }}
-                className="control-pill w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+                className="control-pill order-2 lg:order-7 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
                 aria-label="Reset app data and restart"
               >
                 Reset
@@ -2335,7 +2335,7 @@ export default function App() {
                     }));
                   }
                 }}
-                className={`control-pill w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-3 lg:order-2 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   printFrame.enabled
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2346,7 +2346,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowPrintArea((prev) => !prev)}
-                className={`control-pill w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-4 lg:order-3 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   showPrintArea
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2359,7 +2359,7 @@ export default function App() {
                 onClick={() => {
                   void handleShareVisibleCanvasImageLink();
                 }}
-                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-5 lg:order-4 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Link2 />
                 {isMobileViewport ? "Share Link" : "Share Image Link"}
@@ -2367,7 +2367,7 @@ export default function App() {
               <button
                 onClick={handleUndo}
                 disabled={historyPast.length === 0}
-                className="control-pill w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill order-6 lg:order-9 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Undo"
               >
                 <RotateCcw />
@@ -2376,7 +2376,7 @@ export default function App() {
               <button
                 onClick={handleRedo}
                 disabled={historyFuture.length === 0}
-                className="control-pill w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill order-7 lg:order-10 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Redo"
               >
                 <RotateCw />
@@ -2384,25 +2384,33 @@ export default function App() {
               </button>
               <button
                 onClick={openExportPanel}
-                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-8 lg:order-5 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Download />
                 Download
               </button>
               <button
                 onClick={handlePrintCanvas}
-                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-9 lg:order-8 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Printer />
                 Print
               </button>
-              <button
-                onClick={() => setShowAbout(true)}
-                className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
-              >
-                <Info />
-                About
-              </button>
+              <label className="control-pill order-11 lg:order-6 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-2 overflow-hidden">
+                <Upload className="w-4 h-4" />
+                Import
+                <input
+                  type="file"
+                  accept="image/*,text/plain,application/json,.csv,.md"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    await handleHeaderUpload(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
             </div>
           </div>
         </div>
@@ -2452,7 +2460,7 @@ export default function App() {
             onImportFont={handleImportFont}
             zoomLevel={zoomLevel}
             onZoomChange={handleZoomChange}
-            onImportFile={handleHeaderUpload}
+            onOpenAbout={() => setShowAbout(true)}
           />
         </div>
         )}
@@ -2618,7 +2626,7 @@ export default function App() {
                 onImportFont={handleImportFont}
                 zoomLevel={zoomLevel}
                 onZoomChange={handleZoomChange}
-                onImportFile={handleHeaderUpload}
+                onOpenAbout={() => setShowAbout(true)}
               />
             </div>
           </div>

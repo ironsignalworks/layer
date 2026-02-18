@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { NodeData, NodeTextStyle, TextAlign } from "./world-node";
-import { Eye, Trash2, Copy, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown } from "lucide-react";
+import { Eye, Trash2, Copy, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown, Upload } from "lucide-react";
 
 const GOOGLE_FONTS_METADATA_URL = "https://fonts.google.com/metadata/fonts";
 const FALLBACK_GOOGLE_FONTS = [
@@ -562,6 +562,7 @@ export function RightSidebar({
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <label className="h-8 px-2 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center gap-2 cursor-pointer text-[10px] uppercase tracking-wider">
+              <Upload className="w-3.5 h-3.5" />
               Import
               <input
                 type="file"

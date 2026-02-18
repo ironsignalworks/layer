@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn } from "lucide-react";
+import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info } from "lucide-react";
 import { ScrollArea } from "../components/ui/scroll-area";
 
 interface LeftSidebarProps {
@@ -29,7 +29,7 @@ interface LeftSidebarProps {
   onImportFont: (file: File) => void;
   zoomLevel: number;
   onZoomChange: (nextZoom: number) => void;
-  onImportFile: (file: File) => Promise<void> | void;
+  onOpenAbout: () => void;
 }
 
 export function LeftSidebar({
@@ -59,7 +59,7 @@ export function LeftSidebar({
   onImportFont,
   zoomLevel,
   onZoomChange,
-  onImportFile,
+  onOpenAbout,
 }: LeftSidebarProps) {
   const presetOptions: Array<{ value: LeftSidebarProps["canvasPreset"]; label: string }> = [
     { value: "none", label: "None" },
@@ -502,21 +502,14 @@ export function LeftSidebar({
 
       <div className="panel-3d flex-shrink-0 px-4 py-3 border-t border-white/5">
         <div className="flex flex-col items-stretch gap-2">
-          <label className="control-pill w-full h-14 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center gap-1 cursor-pointer uppercase tracking-wider text-[10px] overflow-hidden">
-            <Upload />
-            Import
-            <input
-              type="file"
-              accept="image/*,text/plain,application/json,.csv,.md"
-              className="hidden"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                await onImportFile(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
+          <button
+            type="button"
+            onClick={onOpenAbout}
+            className="control-pill w-full h-14 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center gap-1 uppercase tracking-wider text-[10px] overflow-hidden"
+          >
+            <Info />
+            About
+          </button>
           <div className="fanzinator-subtitle text-[8px] text-[#737373] text-center whitespace-nowrap">
             <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
               IRON SIGNAL WORKS
