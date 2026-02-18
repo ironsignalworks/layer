@@ -135,6 +135,8 @@ interface RightSidebarProps {
   brushSpec: { size: number; opacity: number; shape: "round" | "square" | "triangle" };
   eraserSpec: { size: number; opacity: number; shape: "round" | "square" | "triangle" };
   brushColor: string;
+  brushStrokeResizeEnabled: boolean;
+  onBrushStrokeResizeEnabledChange: (enabled: boolean) => void;
   onBrushSizeChange: (size: number) => void;
   onBrushOpacityChange: (opacity: number) => void;
   onBrushShapeChange: (shape: "round" | "square" | "triangle") => void;
@@ -158,6 +160,8 @@ export function RightSidebar({
   brushSpec,
   eraserSpec,
   brushColor,
+  brushStrokeResizeEnabled,
+  onBrushStrokeResizeEnabledChange,
   onBrushSizeChange,
   onBrushOpacityChange,
   onBrushShapeChange,
@@ -256,6 +260,27 @@ export function RightSidebar({
                     aria-label="Brush color hex"
                   />
                 </div>
+              </div>
+            )}
+            {isBrush && (
+              <div className="flex items-center justify-between border border-white/10 px-3 py-2">
+                <div>
+                  <div className="text-xs text-[#fafafa] font-light">Stroke Resize Toggle</div>
+                  <div className="text-[10px] text-[#737373] mt-0.5">
+                    New brush strokes start with resize handle.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onBrushStrokeResizeEnabledChange(!brushStrokeResizeEnabled)}
+                  className={`control-square h-7 w-7 rounded-none border text-[9px] uppercase tracking-wider transition-colors ${
+                    brushStrokeResizeEnabled
+                      ? "border-white/30 text-[#fafafa] bg-white/10"
+                      : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                  }`}
+                >
+                  {brushStrokeResizeEnabled ? "On" : "Off"}
+                </button>
               </div>
             )}
             <div className="text-[10px] uppercase tracking-wider text-[#737373]">

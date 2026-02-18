@@ -30,6 +30,7 @@ interface WorldCanvasProps {
   brushSize: number;
   brushColor: string;
   brushOpacity: number;
+  brushStrokeResizeEnabled: boolean;
   onBrushPresetChange: (preset: "ink" | "marker" | "chalk") => void;
   onBrushShapeChange: (shape: "round" | "square" | "triangle") => void;
   onBrushSizeChange: (size: number) => void;
@@ -83,6 +84,7 @@ export function WorldCanvas({
   brushSize,
   brushColor,
   brushOpacity,
+  brushStrokeResizeEnabled,
   onBrushPresetChange,
   onBrushShapeChange,
   onBrushSizeChange,
@@ -147,6 +149,9 @@ export function WorldCanvas({
     visible: false,
   });
   const strokeActionStartedRef = useRef(false);
+  const eraserTargetNodeIdRef = useRef<string | null>(null);
+  const eraserPathIdRef = useRef<string | null>(null);
+  const eraserModeRef = useRef<"stroke" | "mask" | null>(null);
   const brushStrokeIdRef = useRef<string | null>(null);
   const brushPointsRef = useRef<{ x: number; y: number }[]>([]);
   const frameDrawStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -234,6 +239,38 @@ export function WorldCanvas({
   const getPrimarySelectedNode = () =>
     nodes.find((node) => node.id === selectedNodeIds[0]) ?? null;
 
+  const handleNodeResizeLive = (node: NodeData, size: { width: number; height: number }) => {
+    if (node.type !== "stroke") {
+      onResize(node.id, size);
+      return;
+    }
+    const prevSize = getNodeSize(node);
+    const safePrevWidth = Math.max(1, prevSize.width);
+    const safePrevHeight = Math.max(1, prevSize.height);
+    const nextWidth = Math.max(1, size.width);
+    const nextHeight = Math.max(1, size.height);
+    const scaleX = nextWidth / safePrevWidth;
+    const scaleY = nextHeight / safePrevHeight;
+    const scaledStrokePoints = (node.strokePoints ?? []).map((point) => ({
+      x: point.x * scaleX,
+      y: point.y * scaleY,
+    }));
+    const scaledErasePaths = (node.erasePaths ?? []).map((erasePath) => ({
+      ...erasePath,
+      size: erasePath.size * Math.max(0.001, (Math.abs(scaleX) + Math.abs(scaleY)) / 2),
+      points: erasePath.points.map((point) => ({
+        x: point.x * scaleX,
+        y: point.y * scaleY,
+      })),
+    }));
+    onUpdateNodeLive(node.id, {
+      width: nextWidth,
+      height: nextHeight,
+      strokePoints: scaledStrokePoints,
+      erasePaths: scaledErasePaths,
+    });
+  };
+
   const getAbsoluteStrokePoints = (node: NodeData) =>
     (node.strokePoints ?? []).map((strokePoint) => ({
       x: node.x + strokePoint.x,
@@ -317,33 +354,114 @@ export function WorldCanvas({
     return true;
   };
 
-  const eraseAtPoint = (point: { x: number; y: number }) => {
-    const selectedNode = getPrimarySelectedNode();
-    if (selectedNode) {
-      if (selectedNode.type !== "stroke") return;
-      eraseStrokeContentAtPoint(selectedNode, point);
+  const isMaskErasableNode = (node: NodeData) =>
+    node.type === "image" || node.type === "text" || node.type === "stroke";
+
+  const getNodeBounds = (node: NodeData) => {
+    const size = getNodeSize(node);
+    return { x: node.x, y: node.y, width: size.width, height: size.height };
+  };
+
+  const isPointInsideNode = (node: NodeData, point: { x: number; y: number }) => {
+    const bounds = getNodeBounds(node);
+    return (
+      point.x >= bounds.x &&
+      point.x <= bounds.x + bounds.width &&
+      point.y >= bounds.y &&
+      point.y <= bounds.y + bounds.height
+    );
+  };
+
+  const toNodeLocalPoint = (node: NodeData, point: { x: number; y: number }) => {
+    const bounds = getNodeBounds(node);
+    return {
+      x: Math.max(0, Math.min(bounds.width, point.x - bounds.x)),
+      y: Math.max(0, Math.min(bounds.height, point.y - bounds.y)),
+    };
+  };
+
+  const applyMaskErasePath = (node: NodeData, localPoint: { x: number; y: number }, pathId: string) => {
+    const currentPaths = node.erasePaths ?? [];
+    const existingIndex = currentPaths.findIndex((path) => path.id === pathId);
+    if (existingIndex < 0) {
+      const nextPaths = [
+        ...currentPaths,
+        {
+          id: pathId,
+          size: Math.max(1, eraserSize),
+          opacity: Math.max(0.05, Math.min(1, eraserOpacity)),
+          shape: eraserFormat,
+          points: [localPoint],
+        },
+      ];
+      onUpdateNodeLive(node.id, { erasePaths: nextPaths });
       return;
     }
-    const toDelete: string[] = [];
-    const threshold = (eraserSize * Math.max(0.05, eraserOpacity)) / Math.max(zoomScale, 0.001);
-    nodes.forEach((node) => {
-      if (node.type !== "stroke" || !node.strokePoints || node.strokePoints.length === 0) return;
-      const hit = node.strokePoints.some((strokePoint) => {
-        const absX = node.x + strokePoint.x;
-        const absY = node.y + strokePoint.y;
-        const dx = absX - point.x;
-        const dy = absY - point.y;
-        return isWithinToolShape(dx, dy, threshold, eraserFormat);
-      });
-      if (hit) toDelete.push(node.id);
-    });
-    if (toDelete.length > 0) {
-      if (!strokeActionStartedRef.current) {
-        onStrokeActionStart();
-        strokeActionStartedRef.current = true;
+    const targetPath = currentPaths[existingIndex];
+    const lastPoint = targetPath.points[targetPath.points.length - 1];
+    if (lastPoint) {
+      const dx = localPoint.x - lastPoint.x;
+      const dy = localPoint.y - lastPoint.y;
+      if (dx * dx + dy * dy < 0.04) {
+        return;
       }
-      onDeleteNodesLive(toDelete);
     }
+    const nextPaths = currentPaths.map((path) =>
+      path.id === pathId ? { ...path, points: [...path.points, localPoint] } : path
+    );
+    onUpdateNodeLive(node.id, { erasePaths: nextPaths });
+  };
+
+  const resolveEraserTarget = (point: { x: number; y: number }) => {
+    const selectedNode = getPrimarySelectedNode();
+    if (selectedNode && (selectedNode.type === "stroke" || isMaskErasableNode(selectedNode))) {
+      return selectedNode;
+    }
+    const threshold = (eraserSize * Math.max(0.05, eraserOpacity)) / Math.max(zoomScale, 0.001);
+    return [...nodes].reverse().find((node) => {
+      if (node.type === "stroke" && node.strokePoints && node.strokePoints.length > 0) {
+        const hitStrokePoint = node.strokePoints.some((strokePoint) => {
+          const absX = node.x + strokePoint.x;
+          const absY = node.y + strokePoint.y;
+          const dx = absX - point.x;
+          const dy = absY - point.y;
+          return isWithinToolShape(dx, dy, threshold, eraserFormat);
+        });
+        if (hitStrokePoint) return true;
+        // Fallback to stroke node bounds so sparse stroke points are still erasable.
+        return isPointInsideNode(node, point);
+      }
+      if (!isMaskErasableNode(node)) return false;
+      return isPointInsideNode(node, point);
+    }) ?? null;
+  };
+
+  const beginEraseAtPoint = (point: { x: number; y: number }) => {
+    const targetNode = resolveEraserTarget(point);
+    if (!targetNode) return;
+    eraserTargetNodeIdRef.current = targetNode.id;
+    if (!strokeActionStartedRef.current) {
+      onStrokeActionStart();
+      strokeActionStartedRef.current = true;
+    }
+    eraserModeRef.current = "mask";
+    const pathId = `erase-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    eraserPathIdRef.current = pathId;
+    applyMaskErasePath(targetNode, toNodeLocalPoint(targetNode, point), pathId);
+  };
+
+  const continueEraseAtPoint = (point: { x: number; y: number }) => {
+    const nodeId = eraserTargetNodeIdRef.current;
+    const mode = eraserModeRef.current;
+    if (!nodeId || !mode) {
+      beginEraseAtPoint(point);
+      return;
+    }
+    const targetNode = nodes.find((node) => node.id === nodeId);
+    if (!targetNode) return;
+    const pathId = eraserPathIdRef.current;
+    if (!pathId || mode !== "mask" || !isMaskErasableNode(targetNode)) return;
+    applyMaskErasePath(targetNode, toNodeLocalPoint(targetNode, point), pathId);
   };
 
   const updateBrushStroke = (point: { x: number; y: number }) => {
@@ -385,6 +503,14 @@ export function WorldCanvas({
   // Canvas panning / selection
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    const targetElement = e.target as HTMLElement | null;
+    if (
+      targetElement?.closest(
+        "button, input, select, textarea, label, [role='button'], [data-no-canvas-pointer]"
+      )
+    ) {
+      return;
+    }
     if (e.pointerType === "touch") {
       touchPointsRef.current.set(e.pointerId, getLocalPoint(e.clientX, e.clientY));
       if (touchPointsRef.current.size >= 2) {
@@ -404,6 +530,9 @@ export function WorldCanvas({
         setSelectionRect(null);
         setIsBrushDrawing(false);
         setIsErasing(false);
+        eraserTargetNodeIdRef.current = null;
+        eraserPathIdRef.current = null;
+        eraserModeRef.current = null;
         brushStrokeIdRef.current = null;
         brushPointsRef.current = [];
         activePointerIdRef.current = null;
@@ -444,6 +573,7 @@ export function WorldCanvas({
           strokeWidth: brushSize,
           strokeColor: brushColor,
           strokeShape: brushShape,
+          strokeResizeEnabled: brushStrokeResizeEnabled,
           opacity: brushOpacity,
         });
         setIsBrushDrawing(true);
@@ -452,7 +582,7 @@ export function WorldCanvas({
       if (!e.shiftKey && activeTool === "eraser") {
         setToolMenu((prev) => ({ ...prev, visible: false }));
         setIsErasing(true);
-        eraseAtPoint(start);
+        beginEraseAtPoint(start);
         return;
       }
       if (printFrame.enabled && !e.shiftKey) {
@@ -525,7 +655,7 @@ export function WorldCanvas({
     }
     if (isErasing) {
       if (e.pointerType !== "mouse") e.preventDefault();
-      eraseAtPoint(toCanvasPoint(e.clientX, e.clientY));
+      continueEraseAtPoint(toCanvasPoint(e.clientX, e.clientY));
       return;
     }
     if (isFrameDrawing) {
@@ -653,6 +783,9 @@ export function WorldCanvas({
     }
     if (isErasing) {
       setIsErasing(false);
+      eraserTargetNodeIdRef.current = null;
+      eraserPathIdRef.current = null;
+      eraserModeRef.current = null;
     }
     strokeActionStartedRef.current = false;
     if (pendingDrag) {
@@ -870,13 +1003,18 @@ export function WorldCanvas({
           <WorldNode
             key={node.id}
             node={node}
-            isSelected={selectedNodeIds.includes(node.id)}
+            isSelected={activeTool === "select" && selectedNodeIds.includes(node.id)}
             parallaxOffset={{ x: 0, y: 0 }}
             zIndex={index}
             zoomScale={zoomScale}
             disableInteraction={activeTool === "brush" || activeTool === "eraser"}
             onResizeStart={() => onResizeStart()}
-            onResize={(target, size) => onResize(target.id, size)}
+            onResize={(target, size) => handleNodeResizeLive(target, size)}
+            onResizeEnd={(target) => {
+              if (target.type === "stroke" && target.strokeResizeEnabled) {
+                onUpdateNodeLive(target.id, { strokeResizeEnabled: false });
+              }
+            }}
             onUpdateNode={onUpdateNode}
             onPointerDown={(event, target) => {
               if (event.pointerType === "mouse" && event.button !== 0) return;

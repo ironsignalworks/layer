@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info, Image as ImageIcon } from "lucide-react";
+import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info, Image as ImageIcon, MoveDiagonal2 } from "lucide-react";
 import { ScrollArea } from "../components/ui/scroll-area";
 
 interface LeftSidebarProps {
@@ -8,7 +8,7 @@ interface LeftSidebarProps {
   currentCanvasId: string;
   canvases: { id: string; name: string }[];
   onCanvasChange: (canvasId: string) => void;
-  nodes: { id: string; title: string; type: string; visible: boolean }[];
+  nodes: { id: string; title: string; type: string; visible: boolean; strokeResizeEnabled?: boolean }[];
   onReorderNodes: (sourceId: string, targetId: string) => void;
   onToggleLayerVisibility: (id: string, visible: boolean) => void;
   onDeleteLayer: (id: string) => void;
@@ -19,6 +19,7 @@ interface LeftSidebarProps {
   selectedLayerId: string;
   onSelectLayer: (id: string) => void;
   onRenameLayer: (id: string, nextTitle: string) => void;
+  onToggleLayerStrokeResize: (id: string, nextEnabled: boolean) => void;
   onCreateCanvas: () => string;
   onRenameCanvas: (nextName: string) => void;
   onDeleteCanvas: () => void;
@@ -49,6 +50,7 @@ export function LeftSidebar({
   selectedLayerId,
   onSelectLayer,
   onRenameLayer,
+  onToggleLayerStrokeResize,
   onCreateCanvas,
   onRenameCanvas,
   onDeleteCanvas,
@@ -390,7 +392,10 @@ export function LeftSidebar({
               Layers
             </div>
             <div className="space-y-1 min-w-0 overflow-hidden">
-              {nodes.map((node) => (
+              {nodes.map((node) => {
+                const isSelectedLayer = selectedLayerId === node.id;
+                const isDraggingLayer = draggingId === node.id;
+                return (
                 <div
                   key={node.id}
                   draggable
@@ -405,7 +410,6 @@ export function LeftSidebar({
                   }}
                   onDragEnd={() => setDraggingId(null)}
                   onClick={() => {
-                    if (activeTool !== "select") return;
                     onSelectLayer(node.id);
                   }}
                   onDoubleClick={(event) => {
@@ -415,14 +419,17 @@ export function LeftSidebar({
                     setDraftLayerTitle(node.title || "");
                   }}
                   className={`layer-row relative w-full max-w-full h-11 pl-2 pr-1.5 rounded-none border text-[10px] font-light transition-colors cursor-grab overflow-visible min-w-0 flex items-center ${
-                    selectedLayerId === node.id
-                      ? "border-white/30 text-[#fafafa] layer-row-selected"
-                      : draggingId === node.id
+                    isSelectedLayer
+                      ? "border-white/40 text-[#fafafa] layer-row-selected"
+                      : isDraggingLayer
                       ? "border-white/30 text-[#fafafa] layer-row-selected"
                       : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                   }`}
                 >
-                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#737373]">
+                  {isSelectedLayer && (
+                    <div className="absolute left-0 top-0 h-full w-1 bg-white/80 pointer-events-none" />
+                  )}
+                  <div className={`absolute -left-4 top-1/2 -translate-y-1/2 pointer-events-none ${isSelectedLayer ? "text-[#fafafa]" : "text-[#737373]"}`}>
                     {node.type === "text" ? (
                       <Type className="w-3.5 h-3.5" />
                     ) : node.type === "image" ? (
@@ -457,9 +464,28 @@ export function LeftSidebar({
                         autoFocus
                       />
                     ) : (
-                      <span className="truncate min-w-0">{node.title || "Untitled"}</span>
+                      <span className={`truncate min-w-0 ${isSelectedLayer ? "text-[#fafafa]" : ""}`}>{node.title || "Untitled"}</span>
                     )}
-                    <div className="grid grid-cols-2 gap-0.5 items-center justify-end flex-shrink-0">
+                    <div className={`grid ${node.type === "stroke" ? "grid-cols-3" : "grid-cols-2"} gap-0.5 items-center justify-end flex-shrink-0`}>
+                      {node.type === "stroke" && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onToggleLayerStrokeResize(node.id, !node.strokeResizeEnabled);
+                          }}
+                          className={`control-square h-full w-full flex items-center justify-center rounded-none border transition-colors ${
+                            node.strokeResizeEnabled
+                              ? "border-white/30 text-[#fafafa] bg-white/10"
+                              : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
+                          }`}
+                          aria-label={node.strokeResizeEnabled ? "Disable stroke resize handle" : "Enable stroke resize handle"}
+                          title={node.strokeResizeEnabled ? "Stroke resize on" : "Stroke resize off"}
+                        >
+                          <MoveDiagonal2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={(event) => {
@@ -495,7 +521,7 @@ export function LeftSidebar({
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
               {nodes.length === 0 && (
                 <div className="text-[10px] text-[#737373]">
                   No layers yet. Add one to create a layer.

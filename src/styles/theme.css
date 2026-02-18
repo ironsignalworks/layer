@@ -325,6 +325,11 @@ label.cursor-pointer {
       var(--skin-layer-selected-mid) 55%,
       var(--skin-layer-selected-bot) 100%
     ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
 [data-role="app-shell"] .inspector-compact .inspector-node-title {

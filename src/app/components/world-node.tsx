@@ -39,6 +39,14 @@ export interface NodeData {
   strokeWidth?: number;
   strokeColor?: string;
   strokeShape?: "round" | "square" | "triangle";
+  strokeResizeEnabled?: boolean;
+  erasePaths?: {
+    id: string;
+    size: number;
+    opacity: number;
+    shape: "round" | "square" | "triangle";
+    points: { x: number; y: number }[];
+  }[];
 }
 
 interface WorldNodeProps {
@@ -50,6 +58,7 @@ interface WorldNodeProps {
   onUpdateNode?: (id: string, updates: Partial<NodeData>) => void;
   onResizeStart?: (node: NodeData) => void;
   onResize?: (node: NodeData, size: { width: number; height: number }) => void;
+  onResizeEnd?: (node: NodeData) => void;
   zoomScale: number;
   zIndex?: number;
   disableInteraction?: boolean;
@@ -63,6 +72,7 @@ export function WorldNode({
   onUpdateNode,
   onResizeStart,
   onResize,
+  onResizeEnd,
   zoomScale,
   zIndex,
   disableInteraction = false,
@@ -141,6 +151,9 @@ export function WorldNode({
   const resolvedFontSize = Math.max(10, Math.min(512, textStyle.fontSize ?? 14));
   const resolvedTextAlign: TextAlign = textStyle.align ?? "center";
   const resolvedTextColor = textStyle.color ?? "#e6e6e6";
+  const erasePaths = node.erasePaths ?? [];
+  const hasEraseMask = erasePaths.length > 0;
+  const maskId = `erase-mask-${node.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
   const justifyContentByAlign: Record<TextAlign, "flex-start" | "center" | "flex-end"> = {
     left: "flex-start",
     center: "center",
@@ -169,9 +182,23 @@ export function WorldNode({
       startWidth: size.width,
       startHeight: size.height,
     };
+    const stopResize = () => {
+      if (!resizeState.current) return;
+      resizeState.current = null;
+      onResizeEnd?.(node);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+      window.removeEventListener("mouseup", handleMouseUpFallback);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
     const handleMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
       if (!resizeState.current) return;
+      if (moveEvent.pointerType === "mouse" && (moveEvent.buttons & 1) === 0) {
+        stopResize();
+        return;
+      }
       const deltaX = (moveEvent.clientX - resizeState.current.startX) / zoomScale;
       const deltaY = (moveEvent.clientY - resizeState.current.startY) / zoomScale;
       const nextWidth = Math.max(minSize, resizeState.current.startWidth + deltaX);
@@ -180,15 +207,16 @@ export function WorldNode({
     };
     const handleUp = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
-      resizeState.current = null;
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-      window.removeEventListener("pointercancel", handleUp);
+      stopResize();
     };
+    const handleMouseUpFallback = () => stopResize();
+    const handleWindowBlur = () => stopResize();
     (event.currentTarget as HTMLElement).setPointerCapture?.(pointerId);
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleUp);
+    window.addEventListener("mouseup", handleMouseUpFallback);
+    window.addEventListener("blur", handleWindowBlur);
   };
 
   const renderedRotation = draftRotation ?? (node.rotation ?? 0);
@@ -251,7 +279,7 @@ export function WorldNode({
         rotate: renderedRotation,
       }}
       transition={{
-        duration: draftRotation === null ? 0.3 : 0.06,
+        duration: draftRotation === null ? 0 : 0.06,
         ease: "easeOut",
       }}
       onPointerEnter={() => setIsHovered(true)}
@@ -281,21 +309,22 @@ export function WorldNode({
           ${isSelected ? "bg-white/5 border border-white/30 shadow-lg" : "bg-transparent border border-transparent shadow-none"}
           ${getNodeShape()}
           ${node.preset ? `preset-${node.preset}` : ""}
-          transition-all duration-200
+          transition-colors duration-75
           overflow-hidden
         `}
         style={{
+          boxSizing: "border-box",
           boxShadow: isSelected
-            ? "0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)"
-            : "none",
+            ? "inset 0 0 0 1px rgba(255, 255, 255, 0.14)"
+            : "inset 0 0 0 1px rgba(255, 255, 255, 0)",
         }}
       >
         {node.type === "text" ? (
-          <div
-            className="w-full h-full flex items-center px-4"
-            style={{ justifyContent: justifyContentByAlign[resolvedTextAlign] }}
-          >
-            {isEditingText ? (
+          isEditingText ? (
+            <div
+              className="w-full h-full flex items-center px-4"
+              style={{ justifyContent: justifyContentByAlign[resolvedTextAlign] }}
+            >
               <textarea
                 value={draftText}
                 onChange={(event) => setDraftText(event.target.value)}
@@ -329,7 +358,70 @@ export function WorldNode({
                 }}
                 autoFocus
               />
-            ) : (
+            </div>
+          ) : hasEraseMask ? (
+            <svg
+              className="w-full h-full"
+              viewBox={`0 0 ${Math.max(1, size.width)} ${Math.max(1, size.height)}`}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <mask id={maskId}>
+                  <rect x="0" y="0" width={size.width} height={size.height} fill="white" />
+                  {erasePaths.map((erasePath) =>
+                    erasePath.points.length > 1 ? (
+                      <polyline
+                        key={erasePath.id}
+                        points={erasePath.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                        fill="none"
+                        stroke="black"
+                        strokeOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                        strokeWidth={Math.max(1, erasePath.size)}
+                        strokeLinecap={erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"}
+                        strokeLinejoin={erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"}
+                      />
+                    ) : (
+                      <circle
+                        key={erasePath.id}
+                        cx={erasePath.points[0]?.x ?? 0}
+                        cy={erasePath.points[0]?.y ?? 0}
+                        r={Math.max(0.5, erasePath.size / 2)}
+                        fill="black"
+                        fillOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                      />
+                    )
+                  )}
+                </mask>
+              </defs>
+              <foreignObject x="0" y="0" width={size.width} height={size.height} mask={`url(#${maskId})`}>
+                <div
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: justifyContentByAlign[resolvedTextAlign],
+                    padding: "0 8px",
+                    boxSizing: "border-box",
+                    color: resolvedTextColor,
+                    fontSize: `${resolvedFontSize}px`,
+                    fontFamily: textStyle.fontFamily ?? "var(--font-sans)",
+                    fontWeight: textStyle.bold ? 700 : 300,
+                    fontStyle: textStyle.italic ? "italic" : "normal",
+                    textDecoration: textStyle.underline ? "underline" : "none",
+                    textAlign: resolvedTextAlign,
+                  }}
+                >
+                  {node.title || "Text"}
+                </div>
+              </foreignObject>
+            </svg>
+          ) : (
+            <div
+              className="w-full h-full flex items-center px-4"
+              style={{ justifyContent: justifyContentByAlign[resolvedTextAlign] }}
+            >
               <div
                 className="w-full"
                 style={{
@@ -344,14 +436,44 @@ export function WorldNode({
               >
                 {node.title || "Text"}
               </div>
-            )}
-          </div>
+            </div>
+          )
         ) : node.type === "stroke" && (node.strokePoints?.length ?? 0) > 1 ? (
           <svg
             className="w-full h-full"
             viewBox={`0 0 ${Math.max(1, size.width)} ${Math.max(1, size.height)}`}
             preserveAspectRatio="none"
           >
+            {hasEraseMask && (
+              <defs>
+                <mask id={maskId}>
+                  <rect x="0" y="0" width={size.width} height={size.height} fill="white" />
+                  {erasePaths.map((erasePath) =>
+                    erasePath.points.length > 1 ? (
+                      <polyline
+                        key={erasePath.id}
+                        points={erasePath.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                        fill="none"
+                        stroke="black"
+                        strokeOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                        strokeWidth={Math.max(1, erasePath.size)}
+                        strokeLinecap={erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"}
+                        strokeLinejoin={erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"}
+                      />
+                    ) : (
+                      <circle
+                        key={erasePath.id}
+                        cx={erasePath.points[0]?.x ?? 0}
+                        cy={erasePath.points[0]?.y ?? 0}
+                        r={Math.max(0.5, erasePath.size / 2)}
+                        fill="black"
+                        fillOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                      />
+                    )
+                  )}
+                </mask>
+              </defs>
+            )}
             <polyline
               points={node.strokePoints?.map((point) => `${point.x},${point.y}`).join(" ") ?? ""}
               fill="none"
@@ -360,16 +482,65 @@ export function WorldNode({
               strokeLinecap={node.strokeShape === "round" ? "round" : "butt"}
               strokeLinejoin={node.strokeShape === "triangle" ? "bevel" : node.strokeShape === "square" ? "miter" : "round"}
               vectorEffect="non-scaling-stroke"
+              mask={hasEraseMask ? `url(#${maskId})` : undefined}
             />
           </svg>
         ) : previewSrc ? (
-          <img
-            src={previewSrc}
-            alt={node.title}
-            draggable={false}
-            className="w-full h-full object-contain opacity-80"
-            style={{ filter: node.invertColors ? "invert(1)" : "none" }}
-          />
+          hasEraseMask ? (
+            <svg
+              className="w-full h-full"
+              viewBox={`0 0 ${Math.max(1, size.width)} ${Math.max(1, size.height)}`}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <mask id={maskId}>
+                  <rect x="0" y="0" width={size.width} height={size.height} fill="white" />
+                  {erasePaths.map((erasePath) =>
+                    erasePath.points.length > 1 ? (
+                      <polyline
+                        key={erasePath.id}
+                        points={erasePath.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                        fill="none"
+                        stroke="black"
+                        strokeOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                        strokeWidth={Math.max(1, erasePath.size)}
+                        strokeLinecap={erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"}
+                        strokeLinejoin={erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"}
+                      />
+                    ) : (
+                      <circle
+                        key={erasePath.id}
+                        cx={erasePath.points[0]?.x ?? 0}
+                        cy={erasePath.points[0]?.y ?? 0}
+                        r={Math.max(0.5, erasePath.size / 2)}
+                        fill="black"
+                        fillOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                      />
+                    )
+                  )}
+                </mask>
+              </defs>
+              <image
+                href={previewSrc}
+                x="0"
+                y="0"
+                width={size.width}
+                height={size.height}
+                preserveAspectRatio="xMidYMid meet"
+                opacity="0.8"
+                mask={`url(#${maskId})`}
+                style={{ filter: node.invertColors ? "invert(1)" : "none" }}
+              />
+            </svg>
+          ) : (
+            <img
+              src={previewSrc}
+              alt={node.title}
+              draggable={false}
+              className="w-full h-full object-contain opacity-80"
+              style={{ filter: node.invertColors ? "invert(1)" : "none" }}
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[#737373]">
             {getNodeIcon()}
@@ -400,7 +571,7 @@ export function WorldNode({
           </button>
         )}
 
-        {(isHovered || isSelected) && node.type !== "stroke" && (
+        {(isHovered || isSelected) && (node.type !== "stroke" || node.strokeResizeEnabled) && (
           <button
             type="button"
             aria-label="Resize layer"

@@ -371,6 +371,129 @@ const applyFilterOpsToCanvas = (
   ctx.putImageData(next, 0, 0);
 };
 
+const drawEraserStamp = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  shape: "round" | "square" | "triangle"
+) => {
+  const radius = Math.max(0.5, size / 2);
+  if (shape === "square") {
+    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    return;
+  }
+  if (shape === "triangle") {
+    ctx.beginPath();
+    ctx.moveTo(x, y - radius);
+    ctx.lineTo(x - radius, y + radius);
+    ctx.lineTo(x + radius, y + radius);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const applyNodeErasePathsToCanvas = (
+  ctx: CanvasRenderingContext2D,
+  node: NodeData,
+  scaleX = 1,
+  scaleY = 1
+) => {
+  const erasePaths = node.erasePaths ?? [];
+  if (erasePaths.length === 0) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  erasePaths.forEach((erasePath) => {
+    const points = erasePath.points ?? [];
+    if (points.length === 0) return;
+    const avgScale = Math.max(0.001, (Math.abs(scaleX) + Math.abs(scaleY)) / 2);
+    const size = Math.max(1, erasePath.size * avgScale);
+    const alpha = Math.max(0.05, Math.min(1, erasePath.opacity));
+    ctx.globalAlpha = alpha;
+    for (let i = 0; i < points.length; i += 1) {
+      const point = points[i];
+      const px = point.x * scaleX;
+      const py = point.y * scaleY;
+      drawEraserStamp(ctx, px, py, size, erasePath.shape);
+      if (i === 0) continue;
+      const prev = points[i - 1];
+      const prevX = prev.x * scaleX;
+      const prevY = prev.y * scaleY;
+      const dx = px - prevX;
+      const dy = py - prevY;
+      const distance = Math.hypot(dx, dy);
+      const step = Math.max(0.75, size * 0.28);
+      const count = Math.max(1, Math.ceil(distance / step));
+      for (let stepIndex = 1; stepIndex < count; stepIndex += 1) {
+        const t = stepIndex / count;
+        const ix = prevX + dx * t;
+        const iy = prevY + dy * t;
+        drawEraserStamp(ctx, ix, iy, size, erasePath.shape);
+      }
+    }
+  });
+  ctx.restore();
+};
+
+const buildSvgEraseMaskDefinition = (
+  node: NodeData,
+  maskId: string,
+  offsetX: number,
+  offsetY: number,
+  scaleX: number,
+  scaleY: number,
+  width: number,
+  height: number
+) => {
+  const erasePaths = node.erasePaths ?? [];
+  if (erasePaths.length === 0) return "";
+  const body: string[] = [
+    `<mask id="${maskId}" maskUnits="userSpaceOnUse" x="${offsetX}" y="${offsetY}" width="${width}" height="${height}">`,
+    `<rect x="${offsetX}" y="${offsetY}" width="${width}" height="${height}" fill="white" />`,
+  ];
+  erasePaths.forEach((erasePath) => {
+    if (!erasePath.points || erasePath.points.length === 0) return;
+    const opacity = Math.max(0.05, Math.min(1, erasePath.opacity));
+    const strokeWidth = Math.max(1, erasePath.size * Math.max(0.001, (Math.abs(scaleX) + Math.abs(scaleY)) / 2));
+    const points = erasePath.points
+      .map((point) => `${offsetX + point.x * scaleX},${offsetY + point.y * scaleY}`)
+      .join(" ");
+    if (erasePath.points.length > 1) {
+      body.push(
+        `<polyline points="${points}" fill="none" stroke="black" stroke-opacity="${opacity}" stroke-width="${strokeWidth}" stroke-linecap="${
+          erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"
+        }" stroke-linejoin="${
+          erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"
+        }" />`
+      );
+    } else {
+      const single = erasePath.points[0];
+      const radius = Math.max(0.5, strokeWidth / 2);
+      const px = offsetX + single.x * scaleX;
+      const py = offsetY + single.y * scaleY;
+      if (erasePath.shape === "square") {
+        body.push(
+          `<rect x="${px - radius}" y="${py - radius}" width="${radius * 2}" height="${radius * 2}" fill="black" fill-opacity="${opacity}" />`
+        );
+      } else if (erasePath.shape === "triangle") {
+        body.push(
+          `<polygon points="${px},${py - radius} ${px - radius},${py + radius} ${px + radius},${py + radius}" fill="black" fill-opacity="${opacity}" />`
+        );
+      } else {
+        body.push(
+          `<circle cx="${px}" cy="${py}" r="${radius}" fill="black" fill-opacity="${opacity}" />`
+        );
+      }
+    }
+  });
+  body.push(`</mask>`);
+  return body.join("");
+};
+
 const applyFinalPassToCanvas = (
   canvas: HTMLCanvasElement,
   mode: FinalPassMode,
@@ -511,6 +634,7 @@ export default function App() {
   const [brushSize, setBrushSize] = useState(6);
   const [brushColor, setBrushColor] = useState("#fafafa");
   const [brushOpacity, setBrushOpacity] = useState(1);
+  const [brushStrokeResizeEnabled, setBrushStrokeResizeEnabled] = useState(false);
   const [eraserSize, setEraserSize] = useState(12);
   const [eraserFormat, setEraserFormat] = useState<"round" | "square" | "triangle">("round");
   const [eraserOpacity, setEraserOpacity] = useState(1);
@@ -1556,14 +1680,15 @@ export default function App() {
     const canvasFilter = includeFilters ? resolveCanvasPresetFilter(canvasPreset) : "none";
     const includeCanvasGrain = includeFilters && canvasPreset !== "none";
     const parts: string[] = [];
+    const defsParts: string[] = [];
     parts.push(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${renderWidth}" height="${renderHeight}" viewBox="0 0 ${renderWidth} ${renderHeight}">`
     );
     if (includeCanvasGrain) {
       const grainColor = canvasPreset === "paper" ? "0,0,0" : "255,255,255";
       const grainAlpha = canvasPreset === "paper" ? "0.08" : "0.12";
-      parts.push(
-        `<defs><pattern id="canvas-grain" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1" cy="1" r="0.6" fill="rgba(${grainColor},${grainAlpha})" /></pattern></defs>`
+      defsParts.push(
+        `<pattern id="canvas-grain" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1" cy="1" r="0.6" fill="rgba(${grainColor},${grainAlpha})" /></pattern>`
       );
     }
     if (canvasFilter !== "none") {
@@ -1580,6 +1705,22 @@ export default function App() {
       const cy = y + h / 2;
       const opacity = Math.max(0, Math.min(1, node.opacity ?? 1));
       const rotation = node.rotation ?? 0;
+      const nodeMaskId = `node-erase-mask-${node.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+      const hasEraseMask = (node.erasePaths?.length ?? 0) > 0;
+      if (hasEraseMask) {
+        defsParts.push(
+          buildSvgEraseMaskDefinition(
+            node,
+            nodeMaskId,
+            x,
+            y,
+            scaleX,
+            scaleY,
+            Math.max(1, size.width * scaleX),
+            Math.max(1, size.height * scaleY)
+          )
+        );
+      }
       const nodeFilter = composeCssFilters([
         includeFilters ? resolveNodePresetFilter(node.preset) : undefined,
         includeFilters && node.invertColors ? "invert(1)" : undefined,
@@ -1598,7 +1739,7 @@ export default function App() {
             node.strokeShape === "round" ? "round" : "butt"
           }" stroke-linejoin="${
             node.strokeShape === "triangle" ? "bevel" : node.strokeShape === "square" ? "miter" : "round"
-          }" />`
+          }"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} />`
         );
       } else if (node.type === "text") {
         const textStyle = node.textStyle ?? {};
@@ -1615,7 +1756,7 @@ export default function App() {
             Math.min(512, textStyle.fontSize ?? 14)
           )}" font-family="${escapeXml(textStyle.fontFamily ?? "IBM Plex Mono, monospace")}" font-weight="${textStyle.bold ? 700 : 300}" font-style="${textStyle.italic ? "italic" : "normal"}" text-decoration="${
             textStyle.underline ? "underline" : "none"
-          }">${escapeXml(node.title || "Text")}</text>`
+          }"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""}>${escapeXml(node.title || "Text")}</text>`
         );
       } else if (node.type !== "stroke") {
         const imageSrc = node.mediaUrl || node.thumbnail || "";
@@ -1626,10 +1767,10 @@ export default function App() {
           (node.thumbnail?.length ?? 0) > 0;
         if (isImage && imageSrc) {
           parts.push(
-            `<image href="${escapeXml(imageSrc)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet" />`
+            `<image href="${escapeXml(imageSrc)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} />`
           );
         } else {
-          parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,255,255,0.08)" />`);
+          parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,255,255,0.08)"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} />`);
           parts.push(
             `<text x="${x + w / 2}" y="${y + h / 2}" dominant-baseline="middle" text-anchor="middle" fill="#8a8a8a" font-size="12">${escapeXml(
               node.type
@@ -1639,6 +1780,9 @@ export default function App() {
       }
       parts.push(`</g>`);
     });
+    if (defsParts.length > 0) {
+      parts.splice(1, 0, `<defs>${defsParts.join("")}</defs>`);
+    }
     if (canvasFilter !== "none") {
       parts.push(`</g>`);
     }
@@ -1717,19 +1861,34 @@ export default function App() {
       ctx.rotate(((node.rotation ?? 0) * Math.PI) / 180);
       ctx.translate(-cx, -cy);
       if (node.type === "stroke" && (node.strokePoints?.length ?? 0) > 1) {
-        ctx.strokeStyle = node.strokeColor ?? "#fafafa";
-        ctx.lineWidth = Math.max(1, (node.strokeWidth ?? 6) * Math.min(scaleX, scaleY));
-        ctx.lineCap = node.strokeShape === "round" ? "round" : "butt";
-        ctx.lineJoin = node.strokeShape === "triangle" ? "bevel" : node.strokeShape === "square" ? "miter" : "round";
-        ctx.beginPath();
+        const nodeCanvas = document.createElement("canvas");
+        nodeCanvas.width = Math.max(1, Math.round(w));
+        nodeCanvas.height = Math.max(1, Math.round(h));
+        const nodeCtx = nodeCanvas.getContext("2d");
+        if (!nodeCtx) {
+          ctx.restore();
+          continue;
+        }
+        nodeCtx.strokeStyle = node.strokeColor ?? "#fafafa";
+        nodeCtx.lineWidth = Math.max(1, (node.strokeWidth ?? 6) * Math.min(scaleX, scaleY));
+        nodeCtx.lineCap = node.strokeShape === "round" ? "round" : "butt";
+        nodeCtx.lineJoin = node.strokeShape === "triangle" ? "bevel" : node.strokeShape === "square" ? "miter" : "round";
+        nodeCtx.beginPath();
         const first = node.strokePoints?.[0];
         if (first) {
-          ctx.moveTo(x + first.x * scaleX, y + first.y * scaleY);
+          nodeCtx.moveTo(first.x * scaleX, first.y * scaleY);
           node.strokePoints?.slice(1).forEach((point) => {
-            ctx.lineTo(x + point.x * scaleX, y + point.y * scaleY);
+            nodeCtx.lineTo(point.x * scaleX, point.y * scaleY);
           });
-          ctx.stroke();
+          nodeCtx.stroke();
         }
+        applyNodeErasePathsToCanvas(
+          nodeCtx,
+          node,
+          nodeCanvas.width / Math.max(1, size.width),
+          nodeCanvas.height / Math.max(1, size.height)
+        );
+        ctx.drawImage(nodeCanvas, x, y, w, h);
       } else if (node.type === "text") {
         const nodeOps = includeFilters ? resolveNodePresetOps(node.preset) : [];
         const textStyle = node.textStyle ?? {};
@@ -1757,6 +1916,12 @@ export default function App() {
           nodeCtx.fillText(node.title || "Text", w / 2, h / 2, Math.max(1, w - 16));
         }
         applyFilterOpsToCanvas(nodeCanvas, nodeOps, includeFilters && Boolean(node.invertColors));
+        applyNodeErasePathsToCanvas(
+          nodeCtx,
+          node,
+          nodeCanvas.width / Math.max(1, size.width),
+          nodeCanvas.height / Math.max(1, size.height)
+        );
         ctx.drawImage(nodeCanvas, x, y, w, h);
       } else if (node.type !== "stroke") {
         const nodeOps = includeFilters ? resolveNodePresetOps(node.preset) : [];
@@ -1792,19 +1957,40 @@ export default function App() {
             }
             nodeCtx.drawImage(image, drawX, drawY, drawW, drawH);
             applyFilterOpsToCanvas(nodeCanvas, nodeOps, includeFilters && Boolean(node.invertColors));
+            applyNodeErasePathsToCanvas(
+              nodeCtx,
+              node,
+              nodeCanvas.width / Math.max(1, size.width),
+              nodeCanvas.height / Math.max(1, size.height)
+            );
             ctx.drawImage(nodeCanvas, x, y, w, h);
           } catch {
             ctx.fillStyle = "rgba(255,255,255,0.08)";
             ctx.fillRect(x, y, w, h);
           }
         } else {
-          ctx.fillStyle = "rgba(255,255,255,0.08)";
-          ctx.fillRect(x, y, w, h);
-          ctx.fillStyle = "#8a8a8a";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.font = `${12 * Math.min(scaleX, scaleY)}px sans-serif`;
-          ctx.fillText(node.type.toUpperCase(), x + w / 2, y + h / 2);
+          const nodeCanvas = document.createElement("canvas");
+          nodeCanvas.width = Math.max(1, Math.round(w));
+          nodeCanvas.height = Math.max(1, Math.round(h));
+          const nodeCtx = nodeCanvas.getContext("2d");
+          if (!nodeCtx) {
+            ctx.restore();
+            continue;
+          }
+          nodeCtx.fillStyle = "rgba(255,255,255,0.08)";
+          nodeCtx.fillRect(0, 0, nodeCanvas.width, nodeCanvas.height);
+          nodeCtx.fillStyle = "#8a8a8a";
+          nodeCtx.textAlign = "center";
+          nodeCtx.textBaseline = "middle";
+          nodeCtx.font = `${12 * Math.min(scaleX, scaleY)}px sans-serif`;
+          nodeCtx.fillText(node.type.toUpperCase(), nodeCanvas.width / 2, nodeCanvas.height / 2);
+          applyNodeErasePathsToCanvas(
+            nodeCtx,
+            node,
+            nodeCanvas.width / Math.max(1, size.width),
+            nodeCanvas.height / Math.max(1, size.height)
+          );
+          ctx.drawImage(nodeCanvas, x, y, w, h);
         }
       }
       ctx.restore();
@@ -2622,6 +2808,7 @@ export default function App() {
               title: node.title,
               type: node.type,
               visible: node.visible !== false,
+              strokeResizeEnabled: node.strokeResizeEnabled ?? false,
             }))}
             onReorderNodes={handleReorderNodes}
             onToggleLayerVisibility={(id, nextVisible) =>
@@ -2635,6 +2822,9 @@ export default function App() {
             selectedLayerId={selectedNodeIds[0] ?? ""}
             onSelectLayer={(id) => setSelectedNodeIds([id])}
             onRenameLayer={(id, nextTitle) => updateNode(id, { title: nextTitle })}
+            onToggleLayerStrokeResize={(id, nextEnabled) =>
+              updateNode(id, { strokeResizeEnabled: nextEnabled })
+            }
             onCreateCanvas={handleCreateCanvas}
             onRenameCanvas={handleRenameCanvas}
             onDeleteCanvas={handleDeleteCanvas}
@@ -2680,6 +2870,7 @@ export default function App() {
                     brushSize={brushSize}
                     brushColor={brushColor}
                     brushOpacity={brushOpacity}
+                    brushStrokeResizeEnabled={brushStrokeResizeEnabled}
                     onBrushPresetChange={setBrushPreset}
                     onBrushShapeChange={setBrushShape}
                     onBrushSizeChange={setBrushSize}
@@ -2725,6 +2916,8 @@ export default function App() {
             brushSpec={{ size: brushSize, opacity: brushOpacity, shape: brushShape }}
             eraserSpec={{ size: eraserSize, opacity: eraserOpacity, shape: eraserFormat }}
             brushColor={brushColor}
+            brushStrokeResizeEnabled={brushStrokeResizeEnabled}
+            onBrushStrokeResizeEnabledChange={setBrushStrokeResizeEnabled}
             onBrushSizeChange={setBrushSize}
             onBrushOpacityChange={setBrushOpacity}
             onBrushShapeChange={setBrushShape}
@@ -2788,6 +2981,7 @@ export default function App() {
                   title: node.title,
                   type: node.type,
                   visible: node.visible !== false,
+                  strokeResizeEnabled: node.strokeResizeEnabled ?? false,
                 }))}
                 onReorderNodes={handleReorderNodes}
                 onToggleLayerVisibility={(id, nextVisible) =>
@@ -2801,6 +2995,9 @@ export default function App() {
                 selectedLayerId={selectedNodeIds[0] ?? ""}
                 onSelectLayer={(id) => setSelectedNodeIds([id])}
                 onRenameLayer={(id, nextTitle) => updateNode(id, { title: nextTitle })}
+                onToggleLayerStrokeResize={(id, nextEnabled) =>
+                  updateNode(id, { strokeResizeEnabled: nextEnabled })
+                }
                 onCreateCanvas={handleCreateCanvas}
                 onRenameCanvas={handleRenameCanvas}
                 onDeleteCanvas={handleDeleteCanvas}
@@ -2845,6 +3042,8 @@ export default function App() {
                 brushSpec={{ size: brushSize, opacity: brushOpacity, shape: brushShape }}
                 eraserSpec={{ size: eraserSize, opacity: eraserOpacity, shape: eraserFormat }}
                 brushColor={brushColor}
+                brushStrokeResizeEnabled={brushStrokeResizeEnabled}
+                onBrushStrokeResizeEnabledChange={setBrushStrokeResizeEnabled}
                 onBrushSizeChange={setBrushSize}
                 onBrushOpacityChange={setBrushOpacity}
                 onBrushShapeChange={setBrushShape}
@@ -3593,6 +3792,8 @@ export default function App() {
                 const src = node.mediaUrl || node.thumbnail || "";
                 const offsetX = node.x - activePrintArea.x;
                 const offsetY = node.y - activePrintArea.y;
+                const hasEraseMask = (node.erasePaths?.length ?? 0) > 0;
+                const printMaskId = `print-erase-mask-${node.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
                 return (
                   <div
                     key={node.id}
@@ -3620,6 +3821,36 @@ export default function App() {
                         viewBox={`0 0 ${Math.max(1, size.width)} ${Math.max(1, size.height)}`}
                         preserveAspectRatio="none"
                       >
+                        {hasEraseMask && (
+                          <defs>
+                            <mask id={printMaskId}>
+                              <rect x="0" y="0" width={size.width} height={size.height} fill="white" />
+                              {(node.erasePaths ?? []).map((erasePath) =>
+                                erasePath.points.length > 1 ? (
+                                  <polyline
+                                    key={erasePath.id}
+                                    points={erasePath.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                                    fill="none"
+                                    stroke="black"
+                                    strokeOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                                    strokeWidth={Math.max(1, erasePath.size)}
+                                    strokeLinecap={erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"}
+                                    strokeLinejoin={erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"}
+                                  />
+                                ) : (
+                                  <circle
+                                    key={erasePath.id}
+                                    cx={erasePath.points[0]?.x ?? 0}
+                                    cy={erasePath.points[0]?.y ?? 0}
+                                    r={Math.max(0.5, erasePath.size / 2)}
+                                    fill="black"
+                                    fillOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                                  />
+                                )
+                              )}
+                            </mask>
+                          </defs>
+                        )}
                         <polyline
                           points={node.strokePoints?.map((point) => `${point.x},${point.y}`).join(" ") ?? ""}
                           fill="none"
@@ -3630,44 +3861,159 @@ export default function App() {
                             node.strokeShape === "triangle" ? "bevel" : node.strokeShape === "square" ? "miter" : "round"
                           }
                           vectorEffect="non-scaling-stroke"
+                          mask={hasEraseMask ? `url(#${printMaskId})` : undefined}
                         />
                       </svg>
                     ) : node.type === "text" ? (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent:
-                            (node.textStyle?.align ?? "center") === "left"
-                              ? "flex-start"
-                              : (node.textStyle?.align ?? "center") === "right"
-                              ? "flex-end"
-                              : "center",
-                          color: node.textStyle?.color ?? "#e6e6e6",
-                          fontSize: Math.max(10, Math.min(512, node.textStyle?.fontSize ?? 14)),
-                          fontFamily: node.textStyle?.fontFamily ?? "var(--font-sans)",
-                          fontWeight: node.textStyle?.bold ? 700 : 300,
-                          fontStyle: node.textStyle?.italic ? "italic" : "normal",
-                          textDecoration: node.textStyle?.underline ? "underline" : "none",
-                          textAlign: node.textStyle?.align ?? "center",
-                          padding: "8px",
-                        }}
-                      >
-                        {node.title || "Text"}
-                      </div>
+                      hasEraseMask ? (
+                        <svg
+                          width="100%"
+                          height="100%"
+                          viewBox={`0 0 ${Math.max(1, size.width)} ${Math.max(1, size.height)}`}
+                          preserveAspectRatio="none"
+                        >
+                          <defs>
+                            <mask id={printMaskId}>
+                              <rect x="0" y="0" width={size.width} height={size.height} fill="white" />
+                              {(node.erasePaths ?? []).map((erasePath) =>
+                                erasePath.points.length > 1 ? (
+                                  <polyline
+                                    key={erasePath.id}
+                                    points={erasePath.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                                    fill="none"
+                                    stroke="black"
+                                    strokeOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                                    strokeWidth={Math.max(1, erasePath.size)}
+                                    strokeLinecap={erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"}
+                                    strokeLinejoin={erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"}
+                                  />
+                                ) : (
+                                  <circle
+                                    key={erasePath.id}
+                                    cx={erasePath.points[0]?.x ?? 0}
+                                    cy={erasePath.points[0]?.y ?? 0}
+                                    r={Math.max(0.5, erasePath.size / 2)}
+                                    fill="black"
+                                    fillOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                                  />
+                                )
+                              )}
+                            </mask>
+                          </defs>
+                          <foreignObject x="0" y="0" width={size.width} height={size.height} mask={`url(#${printMaskId})`}>
+                            <div
+                              xmlns="http://www.w3.org/1999/xhtml"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent:
+                                  (node.textStyle?.align ?? "center") === "left"
+                                    ? "flex-start"
+                                    : (node.textStyle?.align ?? "center") === "right"
+                                    ? "flex-end"
+                                    : "center",
+                                color: node.textStyle?.color ?? "#e6e6e6",
+                                fontSize: `${Math.max(10, Math.min(512, node.textStyle?.fontSize ?? 14))}px`,
+                                fontFamily: node.textStyle?.fontFamily ?? "var(--font-sans)",
+                                fontWeight: node.textStyle?.bold ? 700 : 300,
+                                fontStyle: node.textStyle?.italic ? "italic" : "normal",
+                                textDecoration: node.textStyle?.underline ? "underline" : "none",
+                                textAlign: node.textStyle?.align ?? "center",
+                                padding: "8px",
+                                boxSizing: "border-box",
+                              }}
+                            >
+                              {node.title || "Text"}
+                            </div>
+                          </foreignObject>
+                        </svg>
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent:
+                              (node.textStyle?.align ?? "center") === "left"
+                                ? "flex-start"
+                                : (node.textStyle?.align ?? "center") === "right"
+                                ? "flex-end"
+                                : "center",
+                            color: node.textStyle?.color ?? "#e6e6e6",
+                            fontSize: Math.max(10, Math.min(512, node.textStyle?.fontSize ?? 14)),
+                            fontFamily: node.textStyle?.fontFamily ?? "var(--font-sans)",
+                            fontWeight: node.textStyle?.bold ? 700 : 300,
+                            fontStyle: node.textStyle?.italic ? "italic" : "normal",
+                            textDecoration: node.textStyle?.underline ? "underline" : "none",
+                            textAlign: node.textStyle?.align ?? "center",
+                            padding: "8px",
+                          }}
+                        >
+                          {node.title || "Text"}
+                        </div>
+                      )
                     ) : isImage && src ? (
-                      <img
-                        src={src}
-                        alt={node.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "contain",
-                          opacity: 0.8,
-                        }}
-                      />
+                      hasEraseMask ? (
+                        <svg
+                          width="100%"
+                          height="100%"
+                          viewBox={`0 0 ${Math.max(1, size.width)} ${Math.max(1, size.height)}`}
+                          preserveAspectRatio="none"
+                        >
+                          <defs>
+                            <mask id={printMaskId}>
+                              <rect x="0" y="0" width={size.width} height={size.height} fill="white" />
+                              {(node.erasePaths ?? []).map((erasePath) =>
+                                erasePath.points.length > 1 ? (
+                                  <polyline
+                                    key={erasePath.id}
+                                    points={erasePath.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                                    fill="none"
+                                    stroke="black"
+                                    strokeOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                                    strokeWidth={Math.max(1, erasePath.size)}
+                                    strokeLinecap={erasePath.shape === "round" ? "round" : erasePath.shape === "square" ? "square" : "butt"}
+                                    strokeLinejoin={erasePath.shape === "triangle" ? "bevel" : erasePath.shape === "square" ? "miter" : "round"}
+                                  />
+                                ) : (
+                                  <circle
+                                    key={erasePath.id}
+                                    cx={erasePath.points[0]?.x ?? 0}
+                                    cy={erasePath.points[0]?.y ?? 0}
+                                    r={Math.max(0.5, erasePath.size / 2)}
+                                    fill="black"
+                                    fillOpacity={Math.max(0.05, Math.min(1, erasePath.opacity))}
+                                  />
+                                )
+                              )}
+                            </mask>
+                          </defs>
+                          <image
+                            href={src}
+                            x="0"
+                            y="0"
+                            width={size.width}
+                            height={size.height}
+                            preserveAspectRatio="xMidYMid meet"
+                            opacity="0.8"
+                            mask={`url(#${printMaskId})`}
+                          />
+                        </svg>
+                      ) : (
+                        <img
+                          src={src}
+                          alt={node.title}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            opacity: 0.8,
+                          }}
+                        />
+                      )
                     ) : node.type === "stroke" ? null : (
                       <div
                         style={{
