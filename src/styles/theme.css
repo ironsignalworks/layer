@@ -418,6 +418,27 @@ label.cursor-pointer {
   box-shadow: none;
 }
 
+@media (max-width: 1023px) {
+  [data-role="app-shell"] {
+    --control-height: 2.45rem;
+    --control-font: 0.68rem;
+    --control-pad-x: 0.62rem;
+    --control-gap: 0.3rem;
+    --control-icon-size: 1rem;
+  }
+
+  [data-role="app-shell"] .compact-range::-webkit-slider-thumb {
+    width: 0.84rem;
+    height: 0.84rem;
+    margin-top: -5px;
+  }
+
+  [data-role="app-shell"] .compact-range::-moz-range-thumb {
+    width: 0.84rem;
+    height: 0.84rem;
+  }
+}
+
 [data-role="app-shell"] .export-stepper .export-step-btn {
   min-height: 0 !important;
   height: auto !important;

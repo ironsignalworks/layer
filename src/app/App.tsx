@@ -492,7 +492,7 @@ export default function App() {
 
   const handleNukeAndRestart = async () => {
     const shouldProceed = window.confirm(
-      "Nuke will clear saved Fanzinator data/cache and restart the app. Continue?"
+      "Reset will clear saved Fanzinator data/cache and restart the app. Continue?"
     );
     if (!shouldProceed) return;
 
@@ -556,6 +556,19 @@ export default function App() {
       mediaQuery.removeEventListener("change", updateViewport);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) return;
+    if (!showMobileLeftSidebar && !showMobileRightSidebar) return;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isMobileViewport, showMobileLeftSidebar, showMobileRightSidebar]);
 
   useEffect(() => {
     return () => {
@@ -2218,7 +2231,7 @@ export default function App() {
         </div>
       )}
       {!isPlaying && (
-      <div className="panel-3d print-hide flex-shrink-0 min-h-16 px-3 lg:px-0 py-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
+      <div className="panel-3d print-hide flex-shrink-0 min-h-16 px-3 lg:px-0 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
         <div className="flex items-center justify-between lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] lg:px-6">
           <div className="flex flex-col items-start gap-0 leading-tight">
             <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
@@ -2253,19 +2266,19 @@ export default function App() {
         </div>
         <div className="w-full lg:flex-1 lg:flex lg:justify-end lg:pr-0 lg:mr-[20rem] overflow-hidden">
           <div className="flex flex-col gap-2 text-xs text-[#737373] w-full max-w-full pb-1 lg:pb-0">
-            <div className="grid grid-cols-5 gap-2">
-              <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center overflow-hidden">
-                <span className="truncate min-w-0">Back {historyPast.length} | Fwd {historyFuture.length} | {historyLog[0] ?? "Ready"}</span>
-              </div>
+            <div className="control-pill w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] flex items-center overflow-hidden">
+              <span className="truncate min-w-0">Back {historyPast.length} | Fwd {historyFuture.length} | {historyLog[0] ?? "Ready"}</span>
+            </div>
+            <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
               <button
                 type="button"
                 onClick={() => {
                   void handleNukeAndRestart();
                 }}
                 className="control-pill w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
-                aria-label="Nuke cache and restart"
+                aria-label="Reset app data and restart"
               >
-                Nuke
+                Reset
               </button>
               <button
                 onClick={() => {
@@ -2351,8 +2364,6 @@ export default function App() {
                 <Link2 />
                 {isMobileViewport ? "Share Link" : "Share Image Link"}
               </button>
-            </div>
-            <div className="grid grid-cols-5 gap-2">
               <button
                 onClick={handleUndo}
                 disabled={historyPast.length === 0}
@@ -2554,7 +2565,7 @@ export default function App() {
           onClick={() => setShowMobileLeftSidebar(false)}
         >
           <div
-            className="panel-3d absolute left-0 top-0 h-[100dvh] w-[100vw] max-w-none bg-[#0a0a0a] border-r border-white/10 flex flex-col"
+            className="panel-3d absolute left-0 top-0 h-[100dvh] w-[100vw] max-w-none bg-[#0a0a0a] border-r border-white/10 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
@@ -2620,7 +2631,7 @@ export default function App() {
           onClick={() => setShowMobileRightSidebar(false)}
         >
           <div
-            className="panel-3d absolute right-0 top-0 h-[100dvh] w-[100vw] max-w-none bg-[#0a0a0a] border-l border-white/10 flex flex-col"
+            className="panel-3d absolute right-0 top-0 h-[100dvh] w-[100vw] max-w-none bg-[#0a0a0a] border-l border-white/10 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
@@ -2678,9 +2689,10 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowShareQr(false)}
-                className="text-xs text-[#737373] hover:text-[#fafafa] transition-colors"
+                className="h-8 w-8 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close share panel"
               >
-                Close
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="flex flex-col items-center gap-3">
@@ -2729,10 +2741,12 @@ export default function App() {
                 {expandedNode.title || "Preview"}
               </div>
               <button
+                type="button"
                 onClick={() => setExpandedNodeId(null)}
-                className="text-xs text-[#737373] hover:text-[#fafafa] transition-colors"
+                className="h-8 w-8 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close preview"
               >
-                Close
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
             <div
@@ -2787,10 +2801,12 @@ export default function App() {
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">Export Output</div>
               <button
+                type="button"
                 onClick={() => setShowExport(false)}
-                className="text-xs text-[#737373] hover:text-[#fafafa] transition-colors"
+                className="h-8 w-8 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close export panel"
               >
-                Close
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -3177,10 +3193,12 @@ export default function App() {
             <div className="flex items-center justify-between mb-5">
               <div className="text-lg text-[#fafafa] font-light">Fanzinator - Image + Text Editor</div>
               <button
+                type="button"
                 onClick={() => setShowAbout(false)}
-                className="control-pill px-3 border border-white/10 text-[11px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="h-8 w-8 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close about panel"
               >
-                Close
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="space-y-5 text-sm text-[#9a9a9a] leading-relaxed">
