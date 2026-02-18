@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info, Image as ImageIcon, MoveDiagonal2 } from "lucide-react";
+import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Info, Image as ImageIcon } from "lucide-react";
 import { ScrollArea } from "../components/ui/scroll-area";
 
 interface LeftSidebarProps {
@@ -8,7 +8,7 @@ interface LeftSidebarProps {
   currentCanvasId: string;
   canvases: { id: string; name: string }[];
   onCanvasChange: (canvasId: string) => void;
-  nodes: { id: string; title: string; type: string; visible: boolean; strokeResizeEnabled?: boolean }[];
+  nodes: { id: string; title: string; type: string; visible: boolean }[];
   onReorderNodes: (sourceId: string, targetId: string) => void;
   onToggleLayerVisibility: (id: string, visible: boolean) => void;
   onDeleteLayer: (id: string) => void;
@@ -19,7 +19,6 @@ interface LeftSidebarProps {
   selectedLayerId: string;
   onSelectLayer: (id: string) => void;
   onRenameLayer: (id: string, nextTitle: string) => void;
-  onToggleLayerStrokeResize: (id: string, nextEnabled: boolean) => void;
   onCreateCanvas: () => string;
   onRenameCanvas: (nextName: string) => void;
   onDeleteCanvas: () => void;
@@ -50,7 +49,6 @@ export function LeftSidebar({
   selectedLayerId,
   onSelectLayer,
   onRenameLayer,
-  onToggleLayerStrokeResize,
   onCreateCanvas,
   onRenameCanvas,
   onDeleteCanvas,
@@ -466,26 +464,7 @@ export function LeftSidebar({
                     ) : (
                       <span className={`truncate min-w-0 ${isSelectedLayer ? "text-[#fafafa]" : ""}`}>{node.title || "Untitled"}</span>
                     )}
-                    <div className={`grid ${node.type === "stroke" ? "grid-cols-3" : "grid-cols-2"} gap-0.5 items-center justify-end flex-shrink-0`}>
-                      {node.type === "stroke" && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onToggleLayerStrokeResize(node.id, !node.strokeResizeEnabled);
-                          }}
-                          className={`control-square h-full w-full flex items-center justify-center rounded-none border transition-colors ${
-                            node.strokeResizeEnabled
-                              ? "border-white/30 text-[#fafafa] bg-white/10"
-                              : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
-                          }`}
-                          aria-label={node.strokeResizeEnabled ? "Disable stroke resize handle" : "Enable stroke resize handle"}
-                          title={node.strokeResizeEnabled ? "Stroke resize on" : "Stroke resize off"}
-                        >
-                          <MoveDiagonal2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                    <div className="grid grid-cols-2 gap-0.5 items-center justify-end flex-shrink-0">
                       <button
                         type="button"
                         onClick={(event) => {

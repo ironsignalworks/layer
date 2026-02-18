@@ -39,7 +39,6 @@ export interface NodeData {
   strokeWidth?: number;
   strokeColor?: string;
   strokeShape?: "round" | "square" | "triangle";
-  strokeResizeEnabled?: boolean;
   erasePaths?: {
     id: string;
     size: number;
@@ -571,7 +570,7 @@ export function WorldNode({
           </button>
         )}
 
-        {(isHovered || isSelected) && (node.type !== "stroke" || node.strokeResizeEnabled) && (
+        {(isHovered || isSelected) && (
           <button
             type="button"
             aria-label="Resize layer"

@@ -634,7 +634,6 @@ export default function App() {
   const [brushSize, setBrushSize] = useState(6);
   const [brushColor, setBrushColor] = useState("#fafafa");
   const [brushOpacity, setBrushOpacity] = useState(1);
-  const [brushStrokeResizeEnabled, setBrushStrokeResizeEnabled] = useState(false);
   const [eraserSize, setEraserSize] = useState(12);
   const [eraserFormat, setEraserFormat] = useState<"round" | "square" | "triangle">("round");
   const [eraserOpacity, setEraserOpacity] = useState(1);
@@ -2723,7 +2722,7 @@ export default function App() {
                     }));
                   }
                 }}
-                className={`control-pill order-3 lg:order-3 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-4 lg:order-3 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   printFrame.enabled
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2734,7 +2733,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowPrintArea((prev) => !prev)}
-                className={`control-pill order-4 lg:order-4 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-7 lg:order-4 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   showPrintArea
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2747,7 +2746,7 @@ export default function App() {
                 onClick={() => {
                   void handleShareVisibleCanvasImageLink();
                 }}
-                className="control-pill order-5 lg:order-5 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-3 lg:order-5 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Link2 />
                 {isMobileViewport ? "Share Link" : "Share Image Link"}
@@ -2755,7 +2754,7 @@ export default function App() {
               <button
                 onClick={handleUndo}
                 disabled={historyPast.length === 0}
-                className="control-pill order-6 lg:order-6 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill order-8 lg:order-6 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Undo"
               >
                 <RotateCcw />
@@ -2764,7 +2763,7 @@ export default function App() {
               <button
                 onClick={handleRedo}
                 disabled={historyFuture.length === 0}
-                className="control-pill order-7 lg:order-7 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill order-9 lg:order-7 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Redo"
               >
                 <RotateCw />
@@ -2772,19 +2771,19 @@ export default function App() {
               </button>
               <button
                 onClick={openExportPanel}
-                className="control-pill order-8 lg:order-8 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-5 lg:order-8 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Download />
                 Download
               </button>
               <button
                 onClick={handlePrintCanvas}
-                className="control-pill order-9 lg:order-9 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-6 lg:order-9 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Printer />
                 Print
               </button>
-              <label className="control-pill order-11 lg:order-2 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-1 overflow-hidden">
+              <label className="control-pill order-11 lg:order-2 col-span-3 lg:col-span-1 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-1 overflow-hidden">
                 <Upload className="w-4 h-4" />
                 Import
                 <input
@@ -2830,7 +2829,6 @@ export default function App() {
               title: node.title,
               type: node.type,
               visible: node.visible !== false,
-              strokeResizeEnabled: node.strokeResizeEnabled ?? false,
             }))}
             onReorderNodes={handleReorderNodes}
             onToggleLayerVisibility={(id, nextVisible) =>
@@ -2844,9 +2842,6 @@ export default function App() {
             selectedLayerId={selectedNodeIds[0] ?? ""}
             onSelectLayer={(id) => setSelectedNodeIds([id])}
             onRenameLayer={(id, nextTitle) => updateNode(id, { title: nextTitle })}
-            onToggleLayerStrokeResize={(id, nextEnabled) =>
-              updateNode(id, { strokeResizeEnabled: nextEnabled })
-            }
             onCreateCanvas={handleCreateCanvas}
             onRenameCanvas={handleRenameCanvas}
             onDeleteCanvas={handleDeleteCanvas}
@@ -2892,7 +2887,6 @@ export default function App() {
                     brushSize={brushSize}
                     brushColor={brushColor}
                     brushOpacity={brushOpacity}
-                    brushStrokeResizeEnabled={brushStrokeResizeEnabled}
                     onBrushPresetChange={setBrushPreset}
                     onBrushShapeChange={setBrushShape}
                     onBrushSizeChange={setBrushSize}
@@ -2938,8 +2932,6 @@ export default function App() {
             brushSpec={{ size: brushSize, opacity: brushOpacity, shape: brushShape }}
             eraserSpec={{ size: eraserSize, opacity: eraserOpacity, shape: eraserFormat }}
             brushColor={brushColor}
-            brushStrokeResizeEnabled={brushStrokeResizeEnabled}
-            onBrushStrokeResizeEnabledChange={setBrushStrokeResizeEnabled}
             onBrushSizeChange={setBrushSize}
             onBrushOpacityChange={setBrushOpacity}
             onBrushShapeChange={setBrushShape}
@@ -3003,7 +2995,6 @@ export default function App() {
                   title: node.title,
                   type: node.type,
                   visible: node.visible !== false,
-                  strokeResizeEnabled: node.strokeResizeEnabled ?? false,
                 }))}
                 onReorderNodes={handleReorderNodes}
                 onToggleLayerVisibility={(id, nextVisible) =>
@@ -3017,9 +3008,6 @@ export default function App() {
                 selectedLayerId={selectedNodeIds[0] ?? ""}
                 onSelectLayer={(id) => setSelectedNodeIds([id])}
                 onRenameLayer={(id, nextTitle) => updateNode(id, { title: nextTitle })}
-                onToggleLayerStrokeResize={(id, nextEnabled) =>
-                  updateNode(id, { strokeResizeEnabled: nextEnabled })
-                }
                 onCreateCanvas={handleCreateCanvas}
                 onRenameCanvas={handleRenameCanvas}
                 onDeleteCanvas={handleDeleteCanvas}
@@ -3064,8 +3052,6 @@ export default function App() {
                 brushSpec={{ size: brushSize, opacity: brushOpacity, shape: brushShape }}
                 eraserSpec={{ size: eraserSize, opacity: eraserOpacity, shape: eraserFormat }}
                 brushColor={brushColor}
-                brushStrokeResizeEnabled={brushStrokeResizeEnabled}
-                onBrushStrokeResizeEnabledChange={setBrushStrokeResizeEnabled}
                 onBrushSizeChange={setBrushSize}
                 onBrushOpacityChange={setBrushOpacity}
                 onBrushShapeChange={setBrushShape}

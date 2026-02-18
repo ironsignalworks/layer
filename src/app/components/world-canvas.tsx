@@ -30,7 +30,6 @@ interface WorldCanvasProps {
   brushSize: number;
   brushColor: string;
   brushOpacity: number;
-  brushStrokeResizeEnabled: boolean;
   onBrushPresetChange: (preset: "ink" | "marker" | "chalk") => void;
   onBrushShapeChange: (shape: "round" | "square" | "triangle") => void;
   onBrushSizeChange: (size: number) => void;
@@ -84,7 +83,6 @@ export function WorldCanvas({
   brushSize,
   brushColor,
   brushOpacity,
-  brushStrokeResizeEnabled,
   onBrushPresetChange,
   onBrushShapeChange,
   onBrushSizeChange,
@@ -573,7 +571,6 @@ export function WorldCanvas({
           strokeWidth: brushSize,
           strokeColor: brushColor,
           strokeShape: brushShape,
-          strokeResizeEnabled: brushStrokeResizeEnabled,
           opacity: brushOpacity,
         });
         setIsBrushDrawing(true);
@@ -1010,11 +1007,6 @@ export function WorldCanvas({
             disableInteraction={activeTool === "brush" || activeTool === "eraser"}
             onResizeStart={() => onResizeStart()}
             onResize={(target, size) => handleNodeResizeLive(target, size)}
-            onResizeEnd={(target) => {
-              if (target.type === "stroke" && target.strokeResizeEnabled) {
-                onUpdateNodeLive(target.id, { strokeResizeEnabled: false });
-              }
-            }}
             onUpdateNode={onUpdateNode}
             onPointerDown={(event, target) => {
               if (event.pointerType === "mouse" && event.button !== 0) return;
