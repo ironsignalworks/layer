@@ -490,6 +490,11 @@ export default function App() {
   const exportTemplateMenuRef = useRef<HTMLDivElement | null>(null);
   const exportScaleMenuRef = useRef<HTMLDivElement | null>(null);
   const exportFinalPassMenuRef = useRef<HTMLDivElement | null>(null);
+  const shareModalRef = useRef<HTMLDivElement | null>(null);
+  const previewModalRef = useRef<HTMLDivElement | null>(null);
+  const exportModalRef = useRef<HTMLDivElement | null>(null);
+  const aboutModalRef = useRef<HTMLDivElement | null>(null);
+  const onboardingModalRef = useRef<HTMLDivElement | null>(null);
   const [isFileDragActive, setIsFileDragActive] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showMobileLeftSidebar, setShowMobileLeftSidebar] = useState(false);
@@ -756,6 +761,77 @@ export default function App() {
       // Ignore malformed storage
     }
   }, []);
+
+  useEffect(() => {
+    const activeModal =
+      (showOnboarding ? onboardingModalRef.current : null) ??
+      (showExport ? exportModalRef.current : null) ??
+      (expandedNodeId ? previewModalRef.current : null) ??
+      (showShareQr ? shareModalRef.current : null) ??
+      (showAbout ? aboutModalRef.current : null);
+    if (!activeModal) return;
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const previousActiveElement = document.activeElement as HTMLElement | null;
+    const focusRaf = window.requestAnimationFrame(() => {
+      const firstFocusable = activeModal.querySelector<HTMLElement>(focusableSelector);
+      (firstFocusable ?? activeModal).focus();
+    });
+
+    const handleModalKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (showOnboarding) {
+          completeOnboarding();
+          return;
+        }
+        if (showExport) {
+          setShowExport(false);
+          return;
+        }
+        if (expandedNodeId) {
+          setExpandedNodeId(null);
+          return;
+        }
+        if (showShareQr) {
+          setShowShareQr(false);
+          return;
+        }
+        if (showAbout) {
+          setShowAbout(false);
+        }
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const focusables = Array.from(
+        activeModal.querySelectorAll<HTMLElement>(focusableSelector)
+      ).filter((element) => !element.hasAttribute("disabled") && element.getClientRects().length > 0);
+      if (focusables.length === 0) {
+        event.preventDefault();
+        activeModal.focus();
+        return;
+      }
+      const firstFocusable = focusables[0];
+      const lastFocusable = focusables[focusables.length - 1];
+      const activeElement = document.activeElement as HTMLElement | null;
+      if (!event.shiftKey && activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      } else if (event.shiftKey && activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleModalKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusRaf);
+      document.removeEventListener("keydown", handleModalKeyDown);
+      previousActiveElement?.focus?.();
+    };
+  }, [showOnboarding, showExport, expandedNodeId, showShareQr, showAbout, completeOnboarding]);
 
   useEffect(() => {
     setSaveStatus("saving");
@@ -2180,6 +2256,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       const isEditable =
         target &&
@@ -2317,7 +2394,7 @@ export default function App() {
       {!isPlaying && (
       <div className="panel-3d print-hide relative flex-shrink-0 min-h-16 px-3 lg:px-0 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-1 border-b border-white/5 bg-[#0a0a0a]">
         <div
-          className="absolute right-3 top-2 text-[10px] uppercase tracking-wider text-[#737373] pointer-events-none"
+          className="hidden lg:block absolute right-3 top-2 text-[10px] uppercase tracking-wider text-[#737373] pointer-events-none"
           title="Click app name to change skin"
         >
           Skin: {uiSkinLabel}
@@ -2332,7 +2409,7 @@ export default function App() {
               }
             }}
             tabIndex={0}
-            className="flex flex-col items-start gap-0 leading-tight text-left cursor-pointer select-none transition-transform active:translate-y-px"
+            className="app-logo-trigger flex flex-col items-start gap-0 leading-tight text-left cursor-pointer select-none transition-transform active:translate-y-px outline-none focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/30 focus-visible:outline-offset-2"
             aria-label="Cycle interface skin"
           >
             <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
@@ -2799,7 +2876,14 @@ export default function App() {
 
       {showShareQr && shareImageUrl && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="panel-3d w-[420px] max-w-[94vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5">
+          <div
+            ref={shareModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Share image link"
+            tabIndex={-1}
+            className="panel-3d w-[420px] max-w-[94vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5"
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">Share Image Link</div>
               <button
@@ -2851,7 +2935,14 @@ export default function App() {
 
       {expandedNode && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-[720px] max-w-[92vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5">
+          <div
+            ref={previewModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Layer preview"
+            tabIndex={-1}
+            className="w-[720px] max-w-[92vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5"
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">
                 {expandedNode.title || "Preview"}
@@ -2913,7 +3004,14 @@ export default function App() {
 
       {showExport && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="panel-3d w-[980px] max-w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-visible bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5">
+          <div
+            ref={exportModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Export output"
+            tabIndex={-1}
+            className="panel-3d w-[980px] max-w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-visible bg-[#0a0a0a] border border-white/10 rounded-none p-4 lg:p-5"
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-[#fafafa] font-light">Export Output</div>
               <button
@@ -3305,7 +3403,14 @@ export default function App() {
 
       {showAbout && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="panel-3d w-[680px] max-w-[94vw] max-h-[88vh] overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-none p-7">
+          <div
+            ref={aboutModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="About Fanzinator"
+            tabIndex={-1}
+            className="panel-3d w-[680px] max-w-[94vw] max-h-[88vh] overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-none p-7"
+          >
             <div className="flex items-center justify-between mb-5">
               <div className="text-lg text-[#fafafa] font-light">Fanzinator - Image + Text Editor</div>
               <button
@@ -3325,22 +3430,6 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Skin</div>
                   <div className="text-[10px] uppercase tracking-wider text-[#737373]">Current: {uiSkinLabel}</div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {UI_SKINS.map((skin) => (
-                    <button
-                      key={skin}
-                      type="button"
-                      onClick={() => setUiSkin(skin)}
-                      className={`h-8 px-2 rounded-none border text-[10px] uppercase tracking-wider transition-colors ${
-                        uiSkin === skin
-                          ? "border-white/30 text-[#fafafa] bg-white/10"
-                          : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
-                      }`}
-                    >
-                      {UI_SKIN_LABELS[skin]}
-                    </button>
-                  ))}
                 </div>
                 <div className="text-[10px] text-[#737373] uppercase tracking-wider">
                   Tip: click app name in the header to cycle skins.
@@ -3395,7 +3484,14 @@ export default function App() {
 
       {showOnboarding && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[90]">
-          <div className="panel-3d w-[560px] max-w-[94vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5">
+          <div
+            ref={onboardingModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Quick start onboarding"
+            tabIndex={-1}
+            className="panel-3d w-[560px] max-w-[94vw] bg-[#0a0a0a] border border-white/10 rounded-none p-5"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-[#737373]">Quick Start</div>

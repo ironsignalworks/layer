@@ -159,6 +159,13 @@ export function WorldCanvas({
   const frameMouseStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
+  const touchPointsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStateRef = useRef<{
+    startDistance: number;
+    startScale: number;
+    startCenter: { x: number; y: number };
+    startCanvasPosition: { x: number; y: number };
+  } | null>(null);
   const framePointerIdRef = useRef<number | null>(null);
   const moveFrame = useRef<number | null>(null);
   const pendingMove = useRef<{ id: string; x: number; y: number }[] | null>(null);
@@ -172,6 +179,23 @@ export function WorldCanvas({
   const effectiveSnapStrength = Math.min(1, Math.max(0, snapStrength));
   const dragThreshold = 4;
   const clampZoom = (value: number) => Math.min(200, Math.max(50, Math.round(value)));
+  const zoomLevelToScale = (zoom: number) =>
+    zoom <= 100
+      ? Math.pow(Math.max(0.0001, zoom / 100), LOW_ZOOM_EXPONENT)
+      : 1 + (zoom - 100) / 100;
+  const scaleToZoomLevel = (scale: number) => {
+    if (scale <= 1) {
+      return 100 * Math.pow(Math.max(0.0001, scale), 1 / LOW_ZOOM_EXPONENT);
+    }
+    return 100 + (scale - 1) * 100;
+  };
+  const getLocalPoint = (clientX: number, clientY: number) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    return {
+      x: clientX - (rect?.left ?? 0),
+      y: clientY - (rect?.top ?? 0),
+    };
+  };
   const minFrameSize = 16;
   const brushPresetDefaults: Record<"ink" | "marker" | "chalk", { size: number; color: string }> = {
     ink: { size: 3, color: "#fafafa" },
@@ -361,6 +385,32 @@ export function WorldCanvas({
   // Canvas panning / selection
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.pointerType === "touch") {
+      touchPointsRef.current.set(e.pointerId, getLocalPoint(e.clientX, e.clientY));
+      if (touchPointsRef.current.size >= 2) {
+        const points = Array.from(touchPointsRef.current.values()).slice(0, 2);
+        const [a, b] = points;
+        const startDistance = Math.hypot(b.x - a.x, b.y - a.y);
+        const startCenter = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        pinchStateRef.current = {
+          startDistance: Math.max(1, startDistance),
+          startScale: zoomLevelToScale(zoomLevel),
+          startCenter,
+          startCanvasPosition: { ...canvasPosition },
+        };
+        setIsDragging(false);
+        setPendingDrag(null);
+        setDraggingNodes(null);
+        setSelectionRect(null);
+        setIsBrushDrawing(false);
+        setIsErasing(false);
+        brushStrokeIdRef.current = null;
+        brushPointsRef.current = [];
+        activePointerIdRef.current = null;
+        e.preventDefault();
+        return;
+      }
+    }
     activePointerIdRef.current = e.pointerId;
     canvasRef.current?.setPointerCapture?.(e.pointerId);
     if (e.pointerType !== "mouse") {
@@ -436,6 +486,29 @@ export function WorldCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch" && touchPointsRef.current.has(e.pointerId)) {
+      touchPointsRef.current.set(e.pointerId, getLocalPoint(e.clientX, e.clientY));
+      if (pinchStateRef.current && touchPointsRef.current.size >= 2) {
+        const points = Array.from(touchPointsRef.current.values()).slice(0, 2);
+        const [a, b] = points;
+        const currentDistance = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+        const currentCenter = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const pinch = pinchStateRef.current;
+        const nextScale = pinch.startScale * (currentDistance / pinch.startDistance);
+        const nextZoom = clampZoom(scaleToZoomLevel(nextScale));
+        const resolvedScale = zoomLevelToScale(nextZoom);
+        const anchorWorldX = (pinch.startCenter.x - pinch.startCanvasPosition.x) / pinch.startScale;
+        const anchorWorldY = (pinch.startCenter.y - pinch.startCanvasPosition.y) / pinch.startScale;
+        const nextCanvasPosition = {
+          x: currentCenter.x - anchorWorldX * resolvedScale,
+          y: currentCenter.y - anchorWorldY * resolvedScale,
+        };
+        onZoomChange(nextZoom);
+        onCanvasPositionChange(nextCanvasPosition);
+        e.preventDefault();
+        return;
+      }
+    }
     if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (rect && (activeTool === "brush" || activeTool === "eraser") && e.pointerType === "mouse") {
@@ -557,6 +630,17 @@ export function WorldCanvas({
   };
 
   const handlePointerUp = (pointerId?: number) => {
+    const wasPinching = pinchStateRef.current !== null;
+    if (pointerId !== undefined && touchPointsRef.current.has(pointerId)) {
+      touchPointsRef.current.delete(pointerId);
+    }
+    if (wasPinching) {
+      if (touchPointsRef.current.size < 2) {
+        pinchStateRef.current = null;
+      }
+      activePointerIdRef.current = null;
+      return;
+    }
     if (pointerId !== undefined && activePointerIdRef.current !== null && pointerId !== activePointerIdRef.current) {
       return;
     }

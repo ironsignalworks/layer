@@ -403,6 +403,23 @@ label.cursor-pointer {
   height: var(--control-icon-size) !important;
 }
 
+[data-role="app-shell"] .app-logo-trigger {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  min-height: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  letter-spacing: normal !important;
+  gap: 0 !important;
+}
+
+[data-role="app-shell"] .app-logo-trigger:hover,
+[data-role="app-shell"] .app-logo-trigger:active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 [data-role="app-shell"] .icon-optical-up {
   transform: scale(1.22);
   transform-origin: center;
