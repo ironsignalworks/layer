@@ -7,6 +7,7 @@ import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Frame, Download, Crop, Link
 
 const STORAGE_KEY = "fanzinator:canvas-editor:v2";
 const RESET_KEY = "fanzinator:force-reset:v1";
+const UI_SKIN_KEY = "fanzinator:ui-skin:v1";
 const SCHEMA_VERSION = 1;
 const HISTORY_LIMIT = 50;
 // 8.5x11 portrait at 96dpi-equivalent working units.
@@ -35,6 +36,7 @@ type Snapshot = {
 
 type ExportFormat = "png" | "jpeg" | "webp" | "svg" | "ico" | "avif" | "gif" | "heic";
 type FinalPassMode = "none" | "threshold" | "bitmap" | "posterize" | "duotone";
+type UiSkin = "standard" | "fanzine" | "blade-runner" | "terminal" | "psy-ops";
 type ExportTemplateId =
   | "custom"
   | "a1"
@@ -60,6 +62,14 @@ type FilterOp =
   | { kind: "hueRotate"; value: number };
 
 const EXPORT_FORMAT_OPTIONS: ExportFormat[] = ["png", "jpeg", "webp", "svg", "ico", "avif", "gif", "heic"];
+const UI_SKINS: UiSkin[] = ["standard", "fanzine", "blade-runner", "terminal", "psy-ops"];
+const UI_SKIN_LABELS: Record<UiSkin, string> = {
+  standard: "Standard",
+  fanzine: "Fanzine",
+  "blade-runner": "Blade Runner",
+  terminal: "Terminal",
+  "psy-ops": "Psy-Ops",
+};
 
 const nextAutoCanvasName = (existingNames: Iterable<string>) => {
   const normalized = new Set(Array.from(existingNames, (name) => name.trim().toLowerCase()));
@@ -461,6 +471,7 @@ export default function App() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showMobileLeftSidebar, setShowMobileLeftSidebar] = useState(false);
   const [showMobileRightSidebar, setShowMobileRightSidebar] = useState(false);
+  const [uiSkin, setUiSkin] = useState<UiSkin>("standard");
   const [activeTool, setActiveTool] = useState<"select" | "brush" | "eraser">("select");
   const [historyLog, setHistoryLog] = useState<string[]>([]);
   const [brushPreset, setBrushPreset] = useState<"ink" | "marker" | "chalk">("marker");
@@ -489,6 +500,15 @@ export default function App() {
   const handleZoomChange = (value: number) => {
     setZoomLevel(clampZoom(value));
   };
+
+  const handleCycleUiSkin = () => {
+    setUiSkin((prev) => {
+      const currentIndex = UI_SKINS.indexOf(prev);
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % UI_SKINS.length : 0;
+      return UI_SKINS[nextIndex];
+    });
+  };
+  const uiSkinLabel = UI_SKIN_LABELS[uiSkin];
 
   const handleNukeAndRestart = async () => {
     const shouldProceed = window.confirm(
@@ -577,6 +597,17 @@ export default function App() {
       }
     };
   }, [shareImageUrl]);
+
+  useEffect(() => {
+    const storedSkin = localStorage.getItem(UI_SKIN_KEY) as UiSkin | null;
+    if (storedSkin && UI_SKINS.includes(storedSkin)) {
+      setUiSkin(storedSkin);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(UI_SKIN_KEY, uiSkin);
+  }, [uiSkin]);
 
   useEffect(() => {
     const needsReset = localStorage.getItem(RESET_KEY) !== "done";
@@ -2184,6 +2215,7 @@ export default function App() {
   return (
     <div 
       data-role="app-shell"
+      data-skin={uiSkin}
       data-printing={isPrinting ? "true" : "false"}
       className="h-[100dvh] w-full flex flex-col dark overflow-hidden bg-[#0a0a0a]"
       onDragEnter={(event) => {
@@ -2231,9 +2263,26 @@ export default function App() {
         </div>
       )}
       {!isPlaying && (
-      <div className="panel-3d print-hide flex-shrink-0 min-h-16 px-3 lg:px-0 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
+      <div className="panel-3d print-hide relative flex-shrink-0 min-h-16 px-3 lg:px-0 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-2 border-b border-white/5 bg-[#0a0a0a]">
+        <div
+          className="absolute right-3 top-2 text-[10px] uppercase tracking-wider text-[#737373] pointer-events-none"
+          title="Click app name to change skin"
+        >
+          Skin: {uiSkinLabel}
+        </div>
         <div className="flex items-center justify-between lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] lg:px-6">
-          <div className="flex flex-col items-start gap-0 leading-tight">
+          <div
+            onClick={handleCycleUiSkin}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleCycleUiSkin();
+              }
+            }}
+            tabIndex={0}
+            className="flex flex-col items-start gap-0 leading-tight text-left cursor-pointer select-none transition-transform active:translate-y-px"
+            aria-label="Cycle interface skin"
+          >
             <span className="fanzinator-title text-xl font-light tracking-wide text-[#fafafa]">
               Fanzinator
             </span>
@@ -2275,7 +2324,7 @@ export default function App() {
                 onClick={() => {
                   void handleNukeAndRestart();
                 }}
-                className="control-pill order-2 lg:order-7 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+                className="control-pill order-2 lg:order-10 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
                 aria-label="Reset app data and restart"
               >
                 Reset
@@ -2335,7 +2384,7 @@ export default function App() {
                     }));
                   }
                 }}
-                className={`control-pill order-3 lg:order-2 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-3 lg:order-3 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   printFrame.enabled
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2346,7 +2395,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowPrintArea((prev) => !prev)}
-                className={`control-pill order-4 lg:order-3 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-4 lg:order-4 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   showPrintArea
                     ? "border-white/20 text-[#fafafa] bg-white/5"
                     : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
@@ -2359,7 +2408,7 @@ export default function App() {
                 onClick={() => {
                   void handleShareVisibleCanvasImageLink();
                 }}
-                className="control-pill order-5 lg:order-4 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-5 lg:order-5 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Link2 />
                 {isMobileViewport ? "Share Link" : "Share Image Link"}
@@ -2367,7 +2416,7 @@ export default function App() {
               <button
                 onClick={handleUndo}
                 disabled={historyPast.length === 0}
-                className="control-pill order-6 lg:order-9 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill order-6 lg:order-6 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Undo"
               >
                 <RotateCcw />
@@ -2376,7 +2425,7 @@ export default function App() {
               <button
                 onClick={handleRedo}
                 disabled={historyFuture.length === 0}
-                className="control-pill order-7 lg:order-10 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="control-pill order-7 lg:order-7 w-full min-w-0 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Redo"
               >
                 <RotateCw />
@@ -2384,19 +2433,19 @@ export default function App() {
               </button>
               <button
                 onClick={openExportPanel}
-                className="control-pill order-8 lg:order-5 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-8 lg:order-8 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Download />
                 Download
               </button>
               <button
                 onClick={handlePrintCanvas}
-                className="control-pill order-9 lg:order-8 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                className="control-pill order-9 lg:order-9 w-full min-w-0 border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
               >
                 <Printer />
                 Print
               </button>
-              <label className="control-pill order-11 lg:order-6 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-2 overflow-hidden">
+              <label className="control-pill order-11 lg:order-2 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-2 overflow-hidden">
                 <Upload className="w-4 h-4" />
                 Import
                 <input

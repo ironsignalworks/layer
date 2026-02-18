@@ -276,7 +276,8 @@ export function RightSidebar({
           <div className="mt-2 text-[10px] uppercase tracking-wider">
             Click a layer or drag to box-select
           </div>
-          <label className="mt-4 inline-flex h-8 px-3 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors items-center cursor-pointer text-[10px] uppercase tracking-wider">
+          <label className="mt-4 inline-flex h-8 px-3 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-wider">
+            <Upload className="w-3.5 h-3.5" />
             Import
             <input
               type="file"
@@ -958,7 +959,8 @@ export function RightSidebar({
                 className="w-full bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
               />
               <div className="mt-2 flex items-center gap-2">
-                <label className="px-2.5 py-1.5 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors cursor-pointer">
+                <label className="px-2.5 py-1.5 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5" />
                   Import File
                   <input
                     type="file"

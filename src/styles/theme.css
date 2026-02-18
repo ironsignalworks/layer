@@ -122,13 +122,98 @@ label.cursor-pointer {
   --ui-border: rgba(255, 255, 255, 0.16);
   --ui-shadow: rgba(0, 0, 0, 0.6);
   --ui-highlight: rgba(255, 255, 255, 0.14);
-  background:
+  --skin-app-bg:
     radial-gradient(120% 110% at 50% -20%, #3a3a3a 0%, transparent 45%),
     linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 52%, #090909 100%);
+  --skin-strip-bg: linear-gradient(180deg, #171717 0%, #101010 100%);
+  --skin-pill-top: #2d2d2d;
+  --skin-pill-mid: #1c1c1c;
+  --skin-pill-bot: #111111;
+  --skin-panel-top: #2a2a2a;
+  --skin-panel-mid: #181818;
+  --skin-panel-bot: #101010;
+  --skin-layer-top: #262626;
+  --skin-layer-mid: #121212;
+  --skin-layer-bot: #0b0b0b;
+  --skin-layer-hover-top: #2d2d2d;
+  --skin-layer-hover-mid: #161616;
+  --skin-layer-hover-bot: #0d0d0d;
+  --skin-layer-selected-top: #323232;
+  --skin-layer-selected-mid: #1d1d1d;
+  --skin-layer-selected-bot: #111111;
+  background: var(--skin-app-bg);
 }
 
 [data-role="app-shell"] .print-hide {
-  background: linear-gradient(180deg, #171717 0%, #101010 100%) !important;
+  background: var(--skin-strip-bg) !important;
+}
+
+[data-role="app-shell"][data-skin="fanzine"] {
+  --ui-base: #151008;
+  --ui-surface: #24190d;
+  --ui-surface-hi: #3a2714;
+  --ui-border: rgba(255, 236, 189, 0.24);
+  --skin-app-bg:
+    radial-gradient(110% 100% at 20% -10%, rgba(201, 126, 60, 0.25) 0%, transparent 50%),
+    linear-gradient(180deg, #2d1b0f 0%, #1b120b 55%, #120b07 100%);
+  --skin-strip-bg: linear-gradient(180deg, #2a1a10 0%, #160e09 100%);
+  --skin-pill-top: #513116;
+  --skin-pill-mid: #2a1a0d;
+  --skin-pill-bot: #1a1008;
+  --skin-panel-top: #4c2f17;
+  --skin-panel-mid: #2a190f;
+  --skin-panel-bot: #171008;
+}
+
+[data-role="app-shell"][data-skin="blade-runner"] {
+  --ui-base: #100b16;
+  --ui-surface: #191127;
+  --ui-surface-hi: #2a1a3f;
+  --ui-border: rgba(255, 88, 214, 0.28);
+  --skin-app-bg:
+    radial-gradient(120% 105% at 70% -10%, rgba(255, 78, 169, 0.25) 0%, transparent 55%),
+    linear-gradient(180deg, #250f31 0%, #160c22 55%, #0f0818 100%);
+  --skin-strip-bg: linear-gradient(180deg, #241234 0%, #120b1c 100%);
+  --skin-pill-top: #4e1f5f;
+  --skin-pill-mid: #2a1538;
+  --skin-pill-bot: #160c21;
+  --skin-panel-top: #5a226f;
+  --skin-panel-mid: #2f1641;
+  --skin-panel-bot: #190f27;
+}
+
+[data-role="app-shell"][data-skin="terminal"] {
+  --ui-base: #071008;
+  --ui-surface: #0c1c0f;
+  --ui-surface-hi: #133119;
+  --ui-border: rgba(112, 255, 112, 0.28);
+  --skin-app-bg:
+    radial-gradient(110% 95% at 50% -20%, rgba(54, 196, 87, 0.18) 0%, transparent 52%),
+    linear-gradient(180deg, #0f2412 0%, #0b1a0d 56%, #071008 100%);
+  --skin-strip-bg: linear-gradient(180deg, #0e2312 0%, #09130b 100%);
+  --skin-pill-top: #1c4f28;
+  --skin-pill-mid: #12301a;
+  --skin-pill-bot: #0a1d10;
+  --skin-panel-top: #205c2e;
+  --skin-panel-mid: #13351d;
+  --skin-panel-bot: #0a1e11;
+}
+
+[data-role="app-shell"][data-skin="psy-ops"] {
+  --ui-base: #0c0b1e;
+  --ui-surface: #141236;
+  --ui-surface-hi: #211d57;
+  --ui-border: rgba(122, 182, 255, 0.3);
+  --skin-app-bg:
+    radial-gradient(115% 100% at 30% -10%, rgba(68, 157, 255, 0.24) 0%, transparent 52%),
+    linear-gradient(180deg, #1a1744 0%, #121030 54%, #0a0920 100%);
+  --skin-strip-bg: linear-gradient(180deg, #1a1741 0%, #0f0d26 100%);
+  --skin-pill-top: #2e3f8f;
+  --skin-pill-mid: #1d2760;
+  --skin-pill-bot: #10173f;
+  --skin-panel-top: #34489f;
+  --skin-panel-mid: #202b68;
+  --skin-panel-bot: #131947;
 }
 
 [data-role="app-shell"] :is(
@@ -184,9 +269,9 @@ label.cursor-pointer {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, #2d2d2d 88%, white 12%) 0%,
-      #1c1c1c 50%,
-      #111111 100%
+      color-mix(in srgb, var(--skin-pill-top) 88%, white 12%) 0%,
+      var(--skin-pill-mid) 50%,
+      var(--skin-pill-bot) 100%
     ) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
@@ -198,9 +283,9 @@ label.cursor-pointer {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, #2a2a2a 84%, white 16%) 0%,
-      #181818 52%,
-      #101010 100%
+      color-mix(in srgb, var(--skin-panel-top) 84%, white 16%) 0%,
+      var(--skin-panel-mid) 52%,
+      var(--skin-panel-bot) 100%
     ) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -212,9 +297,9 @@ label.cursor-pointer {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, #262626 78%, black 22%) 0%,
-      #121212 55%,
-      #0b0b0b 100%
+      color-mix(in srgb, var(--skin-layer-top) 78%, black 22%) 0%,
+      var(--skin-layer-mid) 55%,
+      var(--skin-layer-bot) 100%
     ) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
@@ -226,9 +311,9 @@ label.cursor-pointer {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, #2d2d2d 80%, black 20%) 0%,
-      #161616 55%,
-      #0d0d0d 100%
+      color-mix(in srgb, var(--skin-layer-hover-top) 80%, black 20%) 0%,
+      var(--skin-layer-hover-mid) 55%,
+      var(--skin-layer-hover-bot) 100%
     ) !important;
 }
 
@@ -236,9 +321,9 @@ label.cursor-pointer {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, #323232 80%, white 20%) 0%,
-      #1d1d1d 55%,
-      #111111 100%
+      color-mix(in srgb, var(--skin-layer-selected-top) 80%, white 20%) 0%,
+      var(--skin-layer-selected-mid) 55%,
+      var(--skin-layer-selected-bot) 100%
     ) !important;
 }
 
