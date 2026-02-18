@@ -2549,14 +2549,14 @@ export default function App() {
       </main>
 
       {!isPlaying && isMobileViewport && showMobileLeftSidebar && (
-        <div className="print-hide fixed inset-0 z-[80] lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-            onClick={() => setShowMobileLeftSidebar(false)}
-            aria-label="Close layers panel"
-          />
-          <div className="panel-3d absolute left-0 top-0 h-[100dvh] w-[90vw] max-w-[22rem] bg-[#0a0a0a] border-r border-white/10 flex flex-col">
+        <div
+          className="print-hide fixed inset-0 z-[80] lg:hidden bg-black/65 backdrop-blur-sm"
+          onClick={() => setShowMobileLeftSidebar(false)}
+        >
+          <div
+            className="panel-3d absolute left-0 top-0 h-[100dvh] w-[100vw] max-w-none bg-[#0a0a0a] border-r border-white/10 flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-wider text-[#737373]">Layers</div>
               <button
@@ -2615,14 +2615,14 @@ export default function App() {
       )}
 
       {!isPlaying && isMobileViewport && showMobileRightSidebar && (
-        <div className="print-hide fixed inset-0 z-[80] lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-            onClick={() => setShowMobileRightSidebar(false)}
-            aria-label="Close inspector panel"
-          />
-          <div className="panel-3d absolute right-0 top-0 h-[100dvh] w-[90vw] max-w-[24rem] bg-[#0a0a0a] border-l border-white/10 flex flex-col">
+        <div
+          className="print-hide fixed inset-0 z-[80] lg:hidden bg-black/65 backdrop-blur-sm"
+          onClick={() => setShowMobileRightSidebar(false)}
+        >
+          <div
+            className="panel-3d absolute right-0 top-0 h-[100dvh] w-[100vw] max-w-none bg-[#0a0a0a] border-l border-white/10 flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="h-12 px-4 border-b border-white/10 flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-wider text-[#737373]">Inspector</div>
               <button
