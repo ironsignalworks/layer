@@ -66,7 +66,7 @@ const EXPORT_FORMAT_OPTIONS: ExportFormat[] = ["png", "jpeg", "webp", "svg", "ic
 const UI_SKINS: UiSkin[] = ["standard", "fanzine", "blade-runner", "terminal", "psy-ops"];
 const UI_SKIN_LABELS: Record<UiSkin, string> = {
   standard: "Standard",
-  fanzine: "Fanzine",
+  fanzine: "Layer Classic",
   "blade-runner": "Blade Runner",
   terminal: "Terminal",
   "psy-ops": "Psy-Ops",
@@ -2650,10 +2650,10 @@ export default function App() {
             className="app-logo-trigger group flex min-h-[3.35rem] flex-col items-start justify-center gap-0.5 py-1 pr-2 leading-[1.15] text-left cursor-pointer select-none overflow-visible outline-none focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/30 focus-visible:outline-offset-2 lg:w-full"
             aria-label="Cycle interface skin"
           >
-            <span className="fanzinator-title self-start text-[2rem] font-light tracking-wide leading-[1.02] text-[#fafafa] [text-shadow:0_1px_0_rgba(0,0,0,0.75)] transition-transform group-active:translate-y-px">
+            <span className="layer-title self-start text-[2rem] font-light tracking-wide leading-[1.02] text-[#fafafa] [text-shadow:0_1px_0_rgba(0,0,0,0.75)] transition-transform group-active:translate-y-px">
               Layer
             </span>
-            <span className="fanzinator-subtitle w-full self-end text-right text-[11px] font-light tracking-[0.14em] leading-[1.1] text-[#f0f0f0] [text-shadow:0_1px_0_rgba(0,0,0,0.85)]">
+            <span className="layer-subtitle w-full self-end text-right text-[11px] font-light tracking-[0.14em] leading-[1.1] text-[#f0f0f0] [text-shadow:0_1px_0_rgba(0,0,0,0.85)]">
               Visual graphics studio
             </span>
           </div>

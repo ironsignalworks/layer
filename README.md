@@ -64,5 +64,6 @@ It supports multi-canvas projects, freeform composition, drawing tools, and prod
 - `B`: Brush tool
 - `E`: Eraser tool
 
-Live URL: `https://ironsignalworks.github.io/Layer/`
+Live URL: `https://ironsignalworks.github.io/layer/`
+
 

@@ -5,13 +5,13 @@
   --font-mono: 'IBM Plex Mono', monospace;
 }
 
-.fanzinator-title {
+.layer-title {
   font-family: "Special Elite", var(--font-sans);
   letter-spacing: 0.04em;
   text-shadow: 0.5px 0 rgba(255, 255, 255, 0.18);
 }
 
-.fanzinator-subtitle {
+.layer-subtitle {
   font-family: var(--font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;

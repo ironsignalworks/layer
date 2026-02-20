@@ -521,7 +521,7 @@ export function LeftSidebar({
             <Info />
             About
           </button>
-          <div className="fanzinator-subtitle text-[8px] text-[#737373] text-center whitespace-nowrap">
+          <div className="layer-subtitle text-[8px] text-[#737373] text-center whitespace-nowrap">
             <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
               IRON SIGNAL WORKS
             </a>
