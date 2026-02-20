@@ -22,6 +22,7 @@
   <rect width="1200" height="630" fill="#0a0a0a"/>
   <rect x="24" y="24" width="1152" height="582" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
 
-  <text x="96" y="280" class="title">Fanzinator</text>
+  <text x="96" y="280" class="title">Layer</text>
   <text x="96" y="360" class="subtitle">VISUAL GRAPHICS STUDIO</text>
 </svg>
+

@@ -40,12 +40,12 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   
-  /* Fanzinator colors - refined palette */
-  --fanzinator-charcoal: #0a0a0a;
-  --fanzinator-off-white: #fafafa;
-  --fanzinator-accent: #e6e6e6;
-  --fanzinator-primary: #404040;
-  --fanzinator-subtle: #737373;
+  /* Layer colors - refined palette */
+  --Layer-charcoal: #0a0a0a;
+  --Layer-off-white: #fafafa;
+  --Layer-accent: #e6e6e6;
+  --Layer-primary: #404040;
+  --Layer-subtle: #737373;
 }
 
 .dark {
@@ -254,6 +254,25 @@ label.cursor-pointer {
   box-shadow:
     inset 0 1px 2px rgba(0, 0, 0, 0.65),
     inset 0 -1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-role="app-shell"] .dropdown-panel {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ui-surface-hi) 88%, white 12%) 0%,
+      var(--ui-surface) 48%,
+      color-mix(in srgb, var(--ui-base) 82%, black 18%) 100%
+    ) !important;
+  border: 1px solid var(--ui-border) !important;
+  box-shadow:
+    inset 0 1px 0 var(--ui-highlight),
+    inset 0 -1px 0 var(--ui-shadow),
+    0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-role="app-shell"] .dropdown-panel-item {
+  border-color: var(--ui-border) !important;
 }
 
 [data-role="app-shell"] :is(
@@ -656,10 +675,11 @@ label.cursor-pointer {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   
-  /* Fanzinator colors */
-  --color-charcoal: var(--fanzinator-charcoal);
-  --color-off-white: var(--fanzinator-off-white);
-  --color-accent-subtle: var(--fanzinator-accent);
-  --color-primary-text: var(--fanzinator-primary);
-  --color-subtle-text: var(--fanzinator-subtle);
+  /* Layer colors */
+  --color-charcoal: var(--Layer-charcoal);
+  --color-off-white: var(--Layer-off-white);
+  --color-accent-subtle: var(--Layer-accent);
+  --color-primary-text: var(--Layer-primary);
+  --color-subtle-text: var(--Layer-subtle);
 }
+

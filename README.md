@@ -1,6 +1,6 @@
-# Fanzinator
+# Layer
 
-Fanzinator is a browser-based collage and layout studio for fast, layer-driven visual work.
+Layer is a browser-based collage and layout studio for fast, layer-driven visual work.
 It supports multi-canvas projects, freeform composition, drawing tools, and production-ready export controls.
 
 ## Highlights (Current)
@@ -64,4 +64,5 @@ It supports multi-canvas projects, freeform composition, drawing tools, and prod
 - `B`: Brush tool
 - `E`: Eraser tool
 
-Live URL: `https://ironsignalworks.github.io/fanzinator/`
+Live URL: `https://ironsignalworks.github.io/Layer/`
+

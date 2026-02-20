@@ -93,6 +93,11 @@ const LAYER_PRESET_OPTIONS: Array<{ value: NonNullable<NodeData["preset"]> | "no
   { value: "neon", label: "Neon" },
   { value: "paper", label: "Paper" },
 ];
+const TOOL_SHAPE_OPTIONS: Array<{ value: "round" | "square" | "triangle"; label: string }> = [
+  { value: "round", label: "Round" },
+  { value: "square", label: "Square" },
+  { value: "triangle", label: "Triangle" },
+];
 
 const buildGoogleFontHref = (fontFamily: string) => {
   const family = fontFamily.trim();
@@ -152,6 +157,159 @@ interface RightSidebarProps {
   onFlipCanvasVertical: () => void;
 }
 
+function ToolSpecsPanel({
+  activeTool,
+  brushSpec,
+  eraserSpec,
+  brushColor,
+  onBrushSizeChange,
+  onBrushOpacityChange,
+  onBrushShapeChange,
+  onBrushColorChange,
+  onEraserSizeChange,
+  onEraserOpacityChange,
+  onEraserShapeChange,
+}: Pick<
+  RightSidebarProps,
+  | "activeTool"
+  | "brushSpec"
+  | "eraserSpec"
+  | "brushColor"
+  | "onBrushSizeChange"
+  | "onBrushOpacityChange"
+  | "onBrushShapeChange"
+  | "onBrushColorChange"
+  | "onEraserSizeChange"
+  | "onEraserOpacityChange"
+  | "onEraserShapeChange"
+>) {
+  const [isShapeMenuOpen, setIsShapeMenuOpen] = useState(false);
+  const shapeMenuRef = useRef<HTMLDivElement | null>(null);
+  const spec = activeTool === "brush" ? brushSpec : eraserSpec;
+  const isBrush = activeTool === "brush";
+
+  useEffect(() => {
+    if (!isShapeMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!shapeMenuRef.current?.contains(target)) {
+        setIsShapeMenuOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isShapeMenuOpen]);
+
+  return (
+    <div className="w-full lg:w-80 h-full bg-[#0a0a0a] border-l border-white/5 flex flex-col overflow-hidden">
+      <div className="px-6 py-4 border-b border-white/5">
+        <div className="text-[10px] text-[#737373] uppercase tracking-wider mb-2">Tool Specs</div>
+        <div className="text-[#fafafa] text-sm font-light uppercase tracking-wider">{activeTool}</div>
+      </div>
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-6 space-y-5">
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-[#737373] uppercase tracking-wider">Size</span>
+              <span className="text-[#fafafa] tabular-nums">{Math.round(spec.size)} px</span>
+            </div>
+            <input
+              type="range"
+              min={isBrush ? 1 : 2}
+              max={isBrush ? 64 : 72}
+              value={Math.round(spec.size)}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (isBrush) onBrushSizeChange(value);
+                else onEraserSizeChange(value);
+              }}
+              className="tool-spec-slider w-full h-px bg-white/10 appearance-none cursor-pointer"
+            />
+          </div>
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-[#737373] uppercase tracking-wider">Opacity</span>
+              <span className="text-[#fafafa] tabular-nums">{Math.round(spec.opacity * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="5"
+              max="100"
+              value={Math.round(spec.opacity * 100)}
+              onChange={(event) => {
+                const value = Math.max(0.05, Math.min(1, Number(event.target.value) / 100));
+                if (isBrush) onBrushOpacityChange(value);
+                else onEraserOpacityChange(value);
+              }}
+              className="tool-spec-slider w-full h-px bg-white/10 appearance-none cursor-pointer"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#737373] mb-1.5 block font-light">Shape</label>
+            <div className="relative" ref={shapeMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsShapeMenuOpen((prev) => !prev)}
+                className="w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors text-center"
+              >
+                {TOOL_SHAPE_OPTIONS.find((option) => option.value === spec.shape)?.label ?? "Round"}
+              </button>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373] pointer-events-none" />
+              {isShapeMenuOpen && (
+                <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-30 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                  {TOOL_SHAPE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        if (isBrush) onBrushShapeChange(option.value);
+                        else onEraserShapeChange(option.value);
+                        setIsShapeMenuOpen(false);
+                      }}
+                      className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                        spec.shape === option.value
+                          ? "text-[#fafafa] bg-white/10"
+                          : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {isBrush && (
+            <div>
+              <label className="text-xs text-[#737373] mb-1.5 block font-light">Color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={brushColor}
+                  onChange={(event) => onBrushColorChange(event.target.value)}
+                  className="control-square h-8 w-8 rounded-none border border-white/10 bg-transparent p-0.5 cursor-pointer"
+                  aria-label="Brush color"
+                />
+                <input
+                  type="text"
+                  value={brushColor}
+                  onChange={(event) => onBrushColorChange(event.target.value)}
+                  className="control-pill flex-1 bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
+                  aria-label="Brush color hex"
+                />
+              </div>
+            </div>
+          )}
+          <div className="text-[10px] uppercase tracking-wider text-[#737373]">
+            Right-click canvas to access quick tool menu
+          </div>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
 export function RightSidebar({
   selectedNode,
   activeTool,
@@ -175,95 +333,20 @@ export function RightSidebar({
   onFlipCanvasVertical,
 }: RightSidebarProps) {
   if (activeTool === "brush" || activeTool === "eraser") {
-    const spec = activeTool === "brush" ? brushSpec : eraserSpec;
-    const isBrush = activeTool === "brush";
     return (
-      <div className="w-full lg:w-80 h-full bg-[#0a0a0a] border-l border-white/5 flex flex-col overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/5">
-          <div className="text-[10px] text-[#737373] uppercase tracking-wider mb-2">Tool Specs</div>
-          <div className="text-[#fafafa] text-sm font-light uppercase tracking-wider">{activeTool}</div>
-        </div>
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-6 space-y-5">
-            <div>
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="text-[#737373] uppercase tracking-wider">Size</span>
-                <span className="text-[#fafafa] tabular-nums">{Math.round(spec.size)} px</span>
-              </div>
-              <input
-                type="range"
-                min={isBrush ? 1 : 2}
-                max={isBrush ? 64 : 72}
-                value={Math.round(spec.size)}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (isBrush) onBrushSizeChange(value);
-                  else onEraserSizeChange(value);
-                }}
-                className="tool-spec-slider w-full h-px bg-white/10 appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="text-[#737373] uppercase tracking-wider">Opacity</span>
-                <span className="text-[#fafafa] tabular-nums">{Math.round(spec.opacity * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="5"
-                max="100"
-                value={Math.round(spec.opacity * 100)}
-                onChange={(event) => {
-                  const value = Math.max(0.05, Math.min(1, Number(event.target.value) / 100));
-                  if (isBrush) onBrushOpacityChange(value);
-                  else onEraserOpacityChange(value);
-                }}
-                className="tool-spec-slider w-full h-px bg-white/10 appearance-none cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#737373] mb-1.5 block font-light">Shape</label>
-              <select
-                value={spec.shape}
-                onChange={(event) => {
-                  const value = event.target.value as "round" | "square" | "triangle";
-                  if (isBrush) onBrushShapeChange(value);
-                  else onEraserShapeChange(value);
-                }}
-                className="control-pill w-full bg-[#0a0a0a] border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light text-center [text-align-last:center] focus:border-white/20 focus:outline-none transition-colors"
-              >
-                <option className="bg-[#0a0a0a]" value="round">Round</option>
-                <option className="bg-[#0a0a0a]" value="square">Square</option>
-                <option className="bg-[#0a0a0a]" value="triangle">Triangle</option>
-              </select>
-            </div>
-            {isBrush && (
-              <div>
-                <label className="text-xs text-[#737373] mb-1.5 block font-light">Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={brushColor}
-                    onChange={(event) => onBrushColorChange(event.target.value)}
-                    className="control-square h-8 w-8 rounded-none border border-white/10 bg-transparent p-0.5 cursor-pointer"
-                    aria-label="Brush color"
-                  />
-                  <input
-                    type="text"
-                    value={brushColor}
-                    onChange={(event) => onBrushColorChange(event.target.value)}
-                    className="control-pill flex-1 bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light focus:border-white/20 focus:outline-none transition-colors"
-                    aria-label="Brush color hex"
-                  />
-                </div>
-              </div>
-            )}
-            <div className="text-[10px] uppercase tracking-wider text-[#737373]">
-              Right-click canvas to access quick tool menu
-            </div>
-          </div>
-        </ScrollArea>
-      </div>
+      <ToolSpecsPanel
+        activeTool={activeTool}
+        brushSpec={brushSpec}
+        eraserSpec={eraserSpec}
+        brushColor={brushColor}
+        onBrushSizeChange={onBrushSizeChange}
+        onBrushOpacityChange={onBrushOpacityChange}
+        onBrushShapeChange={onBrushShapeChange}
+        onBrushColorChange={onBrushColorChange}
+        onEraserSizeChange={onEraserSizeChange}
+        onEraserOpacityChange={onEraserOpacityChange}
+        onEraserShapeChange={onEraserShapeChange}
+      />
     );
   }
 

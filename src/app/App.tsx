@@ -5,10 +5,10 @@ import { WorldCanvas } from "./components/world-canvas";
 import { NodeData } from "./components/world-node";
 import { Plus, ZoomIn, RotateCcw, RotateCw, Printer, Frame, Download, Crop, Link2, Info, PanelLeft, SlidersHorizontal, X, ChevronUp, ChevronDown, Upload } from "lucide-react";
 
-const STORAGE_KEY = "fanzinator:canvas-editor:v2";
-const RESET_KEY = "fanzinator:force-reset:v1";
-const UI_SKIN_KEY = "fanzinator:ui-skin:v1";
-const ONBOARDING_KEY = "fanzinator:onboarding:v1";
+const STORAGE_KEY = "Layer:canvas-editor:v2";
+const RESET_KEY = "Layer:force-reset:v1";
+const UI_SKIN_KEY = "Layer:ui-skin:v1";
+const ONBOARDING_KEY = "Layer:onboarding:v1";
 const SCHEMA_VERSION = 1;
 const HISTORY_LIMIT = 50;
 // 8.5x11 portrait at 96dpi-equivalent working units.
@@ -675,7 +675,7 @@ export default function App() {
 
   const handleNukeAndRestart = async () => {
     const shouldProceed = window.confirm(
-      "Reset will clear saved Fanzinator data/cache and restart the app. Continue?"
+      "Reset will clear saved Layer data/cache and restart the app. Continue?"
     );
     if (!shouldProceed) return;
 
@@ -686,10 +686,10 @@ export default function App() {
 
       // Remove any project-scoped keys.
       Object.keys(localStorage)
-        .filter((key) => key.startsWith("fanzinator:"))
+        .filter((key) => key.startsWith("Layer:"))
         .forEach((key) => localStorage.removeItem(key));
       Object.keys(sessionStorage)
-        .filter((key) => key.startsWith("fanzinator:"))
+        .filter((key) => key.startsWith("Layer:"))
         .forEach((key) => sessionStorage.removeItem(key));
 
       // Clear Cache Storage entries when available.
@@ -977,7 +977,7 @@ export default function App() {
 
   useEffect(() => {
     if (!customFont) return;
-    const styleId = "fanzinator-custom-font";
+    const styleId = "Layer-custom-font";
     const existing = document.getElementById(styleId);
     if (existing) existing.remove();
     const style = document.createElement("style");
@@ -2422,7 +2422,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `fanzinator-${currentCanvas.name.toLowerCase().replace(/\s+/g, "-")}.json`;
+      link.download = `Layer-${currentCanvas.name.toLowerCase().replace(/\s+/g, "-")}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -2647,13 +2647,13 @@ export default function App() {
               }
             }}
             tabIndex={0}
-            className="app-logo-trigger flex min-h-[3.35rem] flex-col items-start justify-center gap-0.5 py-1 pr-2 leading-[1.15] text-left cursor-pointer select-none overflow-visible transition-transform active:translate-y-px outline-none focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/30 focus-visible:outline-offset-2"
+            className="app-logo-trigger group flex min-h-[3.35rem] flex-col items-start justify-center gap-0.5 py-1 pr-2 leading-[1.15] text-left cursor-pointer select-none overflow-visible outline-none focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/30 focus-visible:outline-offset-2 lg:w-full"
             aria-label="Cycle interface skin"
           >
-            <span className="fanzinator-title text-[2rem] font-light tracking-wide leading-[1.02] text-[#fafafa] [text-shadow:0_1px_0_rgba(0,0,0,0.75)]">
-              Fanzinator
+            <span className="fanzinator-title self-start text-[2rem] font-light tracking-wide leading-[1.02] text-[#fafafa] [text-shadow:0_1px_0_rgba(0,0,0,0.75)] transition-transform group-active:translate-y-px">
+              Layer
             </span>
-            <span className="fanzinator-subtitle text-[11px] font-light tracking-[0.14em] leading-[1.1] text-[#f0f0f0] [text-shadow:0_1px_0_rgba(0,0,0,0.85)]">
+            <span className="fanzinator-subtitle w-full self-end text-right text-[11px] font-light tracking-[0.14em] leading-[1.1] text-[#f0f0f0] [text-shadow:0_1px_0_rgba(0,0,0,0.85)]">
               Visual graphics studio
             </span>
           </div>
@@ -3328,7 +3328,7 @@ export default function App() {
                       </button>
                       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
                       {isExportFormatMenuOpen && (
-                        <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                        <div className="dropdown-panel absolute left-0 right-0 top-[calc(100%+2px)] z-50 rounded-none overflow-hidden">
                           {EXPORT_FORMAT_OPTIONS.map((format) => (
                             <button
                               key={format}
@@ -3337,7 +3337,7 @@ export default function App() {
                                 setExportFormat(format);
                                 setIsExportFormatMenuOpen(false);
                               }}
-                              className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                              className={`dropdown-panel-item w-full h-8 px-3 border-b last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
                                 exportFormat === format
                                   ? "text-[#fafafa] bg-white/10"
                                   : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
@@ -3362,7 +3362,7 @@ export default function App() {
                       </button>
                       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
                       {isExportScaleMenuOpen && (
-                        <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 border border-white/10 bg-[#0a0a0a] rounded-none overflow-hidden">
+                        <div className="dropdown-panel absolute left-0 right-0 top-[calc(100%+2px)] z-50 rounded-none overflow-hidden">
                           {([1, 2, 3] as const).map((scale) => (
                             <button
                               key={scale}
@@ -3371,7 +3371,7 @@ export default function App() {
                                 setExportScale(scale);
                                 setIsExportScaleMenuOpen(false);
                               }}
-                              className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                              className={`dropdown-panel-item w-full h-8 px-3 border-b last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
                                 exportScale === scale
                                   ? "text-[#fafafa] bg-white/10"
                                   : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
@@ -3398,7 +3398,7 @@ export default function App() {
                     </button>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
                     {isExportTemplateMenuOpen && (
-                      <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 max-h-56 overflow-y-auto border border-white/10 bg-[#0a0a0a] rounded-none">
+                      <div className="dropdown-panel absolute left-0 right-0 top-[calc(100%+2px)] z-50 max-h-56 overflow-y-auto rounded-none">
                         {EXPORT_TEMPLATES.map((template) => (
                           <button
                             key={template.id}
@@ -3407,7 +3407,7 @@ export default function App() {
                               handleSelectExportTemplate(template.id);
                               setIsExportTemplateMenuOpen(false);
                             }}
-                            className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                            className={`dropdown-panel-item w-full h-8 px-3 border-b last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
                               exportTemplate === template.id
                                 ? "text-[#fafafa] bg-white/10"
                                 : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
@@ -3541,7 +3541,7 @@ export default function App() {
                         </button>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fafafa] pointer-events-none" />
                         {isExportFinalPassMenuOpen && (
-                          <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-50 max-h-40 overflow-y-auto border border-white/10 bg-[#0a0a0a] rounded-none">
+                          <div className="dropdown-panel absolute left-0 right-0 top-[calc(100%+2px)] z-50 max-h-40 overflow-y-auto rounded-none">
                             {(["none", "threshold", "bitmap", "posterize", "duotone"] as const).map((mode) => (
                               <button
                                 key={mode}
@@ -3550,7 +3550,7 @@ export default function App() {
                                   setExportFinalPass(mode);
                                   setIsExportFinalPassMenuOpen(false);
                                 }}
-                                className={`w-full h-8 px-3 border-b border-white/10 last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
+                                className={`dropdown-panel-item w-full h-8 px-3 border-b last:border-b-0 text-left text-[10px] uppercase tracking-wider transition-colors ${
                                   exportFinalPass === mode
                                     ? "text-[#fafafa] bg-white/10"
                                     : "text-[#737373] hover:text-[#fafafa] hover:bg-white/5"
@@ -3645,12 +3645,12 @@ export default function App() {
             ref={aboutModalRef}
             role="dialog"
             aria-modal="true"
-            aria-label="About Fanzinator"
+            aria-label="About Layer"
             tabIndex={-1}
             className="panel-3d w-[680px] max-w-[94vw] max-h-[88vh] overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-none p-7"
           >
             <div className="flex items-center justify-between mb-5">
-              <div className="text-lg text-[#fafafa] font-light">Fanzinator - Image + Text Editor</div>
+              <div className="text-lg text-[#fafafa] font-light">Layer - Image + Text Editor</div>
               <button
                 type="button"
                 onClick={() => setShowAbout(false)}
@@ -3662,7 +3662,7 @@ export default function App() {
             </div>
             <div className="space-y-5 text-sm text-[#9a9a9a] leading-relaxed">
               <div className="text-base text-[#e8e8e8]">
-                Fanzinator is a focused visual graphics studio for fast collage, typography, and layer-based composition.
+                Layer is a focused visual graphics studio for fast collage, typography, and layer-based composition.
               </div>
               <div className="space-y-2 border border-white/10 p-3">
                 <div className="flex items-center justify-between">
@@ -4096,4 +4096,5 @@ export default function App() {
     </div>
   );
 }
+
 
