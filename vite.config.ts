@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   // Project pages are served from /<repo-name>/ on GitHub Pages.
-  base: '/fanzinator/',
+  base: '/layer/',
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ironsignalworks.github.io/fanzinator/sitemap.xml
+Sitemap: https://ironsignalworks.github.io/layer/sitemap.xml
