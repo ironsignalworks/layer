@@ -4144,8 +4144,8 @@ export default function App() {
                   Layer
                 </span>
                 <div>
-                <div className="text-[10px] uppercase tracking-wider text-[#737373]">About</div>
-                <div className="text-lg text-[#fafafa] font-light mt-1">Product Overview</div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#737373]">About</div>
+                  <div className="text-lg text-[#fafafa] font-light mt-1">Product Overview</div>
                 </div>
               </div>
               <button
