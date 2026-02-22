@@ -190,7 +190,7 @@ function ToolSpecsPanel({
 
   useEffect(() => {
     if (!isShapeMenuOpen) return;
-    const handlePointerDown = (event: PointerEvent) => {
+    const handlePointerDown = (event: Event) => {
       const target = event.target as Node | null;
       if (!target) return;
       if (!shapeMenuRef.current?.contains(target)) {
@@ -198,7 +198,11 @@ function ToolSpecsPanel({
       }
     };
     window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("touchstart", handlePointerDown, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("touchstart", handlePointerDown);
+    };
   }, [isShapeMenuOpen]);
 
   return (
@@ -462,7 +466,7 @@ export function RightSidebar({
 
   useEffect(() => {
     if (!isFontMenuOpen && !isPresetMenuOpen) return;
-    const handleClickOutside = (event: PointerEvent) => {
+    const handleClickOutside = (event: Event) => {
       const target = event.target as Node | null;
       if (!target) return;
       if (!fontMenuRef.current?.contains(target)) {
@@ -473,8 +477,10 @@ export function RightSidebar({
       }
     };
     window.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("touchstart", handleClickOutside, { passive: true });
     return () => {
       window.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("touchstart", handleClickOutside);
     };
   }, [isFontMenuOpen, isPresetMenuOpen]);
 

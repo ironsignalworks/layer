@@ -91,8 +91,9 @@ export function LeftSidebar({
     }
   }, [currentCanvas?.id]);
   useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
+    const onPointerDown = (event: Event) => {
+      const target = event.target as Node | null;
+      if (!target) return;
       if (canvasMenuRef.current && !canvasMenuRef.current.contains(target)) {
         setIsCanvasMenuOpen(false);
       }
@@ -101,7 +102,11 @@ export function LeftSidebar({
       }
     };
     window.addEventListener("pointerdown", onPointerDown);
-    return () => window.removeEventListener("pointerdown", onPointerDown);
+    window.addEventListener("touchstart", onPointerDown, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("touchstart", onPointerDown);
+    };
   }, []);
   if (isCollapsed) {
     return (

@@ -38,6 +38,7 @@ type Snapshot = {
 type ExportFormat = "png" | "jpeg" | "webp" | "svg" | "ico" | "avif" | "gif" | "heic";
 type FinalPassMode = "none" | "threshold" | "bitmap" | "posterize" | "duotone";
 type UiSkin = "standard" | "fanzine" | "blade-runner" | "terminal" | "psy-ops";
+type ExportPresentation = "shared" | "opened" | "downloaded";
 type ExportTemplateId =
   | "custom"
   | "a1"
@@ -1842,16 +1843,13 @@ export default function App() {
     return new Blob([out], { type: "image/x-icon" });
   };
 
-  const presentExportBlob = async (blob: Blob, fileName: string) => {
-    if (isMobileViewport && typeof File !== "undefined" && typeof navigator.share === "function") {
+  const presentExportBlob = async (blob: Blob, fileName: string): Promise<ExportPresentation> => {
+    const canShareToPhotos = /^image\/(png|jpeg|webp|gif|avif|heic)$/i.test(blob.type);
+    if (isMobileViewport && canShareToPhotos && typeof File !== "undefined" && typeof navigator.share === "function") {
       try {
         const file = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
-        const canShareFiles =
-          typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] });
-        if (canShareFiles) {
-          await navigator.share({ files: [file], title: fileName });
-          return;
-        }
+        await navigator.share({ files: [file], title: fileName });
+        return "shared";
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           throw error;
@@ -1863,7 +1861,7 @@ export default function App() {
     try {
       if (isMobileViewport) {
         window.open(url, "_blank", "noopener,noreferrer");
-        return;
+        return "opened";
       }
       const link = document.createElement("a");
       link.href = url;
@@ -1871,6 +1869,7 @@ export default function App() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      return "downloaded";
     } finally {
       window.setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
@@ -2293,9 +2292,17 @@ export default function App() {
           ? await buildIcoBlobFromPng(await blobFromCanvas(canvas, "image/png"), renderWidth, renderHeight)
           : blob;
       const extension = exportFormat === "jpeg" ? "jpg" : exportFormat;
-      await presentExportBlob(outputBlob, `${fileBase}.${extension}`);
+      const presentation = await presentExportBlob(outputBlob, `${fileBase}.${extension}`);
       setShowExport(false);
-      openSupportPrompt("export");
+      const mobilePhotoNote =
+        isMobileViewport && /^image\/(png|jpeg|webp|gif|avif|heic)$/i.test(outputBlob.type)
+          ? presentation === "shared"
+            ? "Use Save Image in Share to add it to Photos."
+            : presentation === "opened"
+            ? "Image opened in a new tab. Long-press it to save to Photos."
+            : ""
+          : "";
+      openSupportPrompt("export", mobilePhotoNote);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
@@ -2454,8 +2461,8 @@ export default function App() {
 
   useEffect(() => {
     if (!showExport) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
+    const closeExportMenusIfOutside = (target: Node | null) => {
+      if (!target) return;
       if (exportFormatMenuRef.current && !exportFormatMenuRef.current.contains(target)) {
         setIsExportFormatMenuOpen(false);
       }
@@ -2469,20 +2476,43 @@ export default function App() {
         setIsExportFinalPassMenuOpen(false);
       }
     };
+    const onPointerDown = (event: PointerEvent) => {
+      // Ignore touch scroll/drag starts; close on click/tap instead.
+      if (event.pointerType === "touch") return;
+      closeExportMenusIfOutside(event.target as Node | null);
+    };
+    const onClick = (event: MouseEvent) => {
+      closeExportMenusIfOutside(event.target as Node | null);
+    };
     window.addEventListener("pointerdown", onPointerDown);
-    return () => window.removeEventListener("pointerdown", onPointerDown);
+    window.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("click", onClick);
+    };
   }, [showExport]);
 
   useEffect(() => {
     if (!showStartModal || !isStartMoreSizesOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
+    const closeStartMenuIfOutside = (target: Node | null) => {
+      if (!target) return;
       if (startMoreSizesMenuRef.current && !startMoreSizesMenuRef.current.contains(target)) {
         setIsStartMoreSizesOpen(false);
       }
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      closeStartMenuIfOutside(event.target as Node | null);
+    };
+    const onClick = (event: MouseEvent) => {
+      closeStartMenuIfOutside(event.target as Node | null);
+    };
     window.addEventListener("pointerdown", onPointerDown);
-    return () => window.removeEventListener("pointerdown", onPointerDown);
+    window.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("click", onClick);
+    };
   }, [showStartModal, isStartMoreSizesOpen]);
 
   const handlePrintCanvas = () => {
@@ -2984,7 +3014,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowPrintArea((prev) => !prev)}
-                className={`control-pill order-7 lg:order-4 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
+                className={`control-pill order-5 lg:order-4 w-full min-w-0 border text-[10px] uppercase tracking-wider transition-colors ${
                   showPrintArea
                     ? "border-white/30 text-[#fafafa] bg-white/12"
                     : "border-white/20 text-[#fafafa] bg-white/5 hover:border-white/30 hover:bg-white/10"
@@ -3022,14 +3052,14 @@ export default function App() {
               </button>
               <button
                 onClick={openExportPanel}
-                className="control-pill order-5 lg:order-8 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+                className="control-pill order-10 lg:order-8 col-span-3 lg:col-span-1 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
               >
                 <Download />
                 Download
               </button>
               <button
                 onClick={handlePrintCanvas}
-                className="control-pill order-6 lg:order-9 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+                className="control-pill hidden lg:flex order-6 lg:order-9 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
               >
                 <Printer />
                 Print
@@ -3913,7 +3943,9 @@ export default function App() {
                     className="h-9 px-3 rounded-none border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] bg-white/10 hover:bg-white/15 transition-colors flex items-center gap-1.5"
                   >
                     <Download className="w-3 h-3" />
-                    Export File
+                    {isMobileViewport && ["png", "jpeg", "webp", "gif", "avif", "heic"].includes(exportFormat)
+                      ? "Export to Photos"
+                      : "Export File"}
                   </button>
                 </div>
               </div>
@@ -3992,13 +4024,17 @@ export default function App() {
                               : "border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20"
                           }`}
                         >
-                          <div className="h-28 border border-white/20 bg-black/30 flex items-center justify-center">
-                            <div
-                              className={`border ${startTemplate === template.id ? "border-white/70" : "border-white/40"}`}
-                              style={{ width: renditionWidth, height: renditionHeight }}
-                            />
+                          {!isMobileViewport && (
+                            <div className="h-28 border border-white/20 bg-black/30 flex items-center justify-center">
+                              <div
+                                className={`border ${startTemplate === template.id ? "border-white/70" : "border-white/40"}`}
+                                style={{ width: renditionWidth, height: renditionHeight }}
+                              />
+                            </div>
+                          )}
+                          <div className={`${isMobileViewport ? "mt-0" : "mt-3"} text-sm text-[#e8e8e8] font-light`}>
+                            {template.label}
                           </div>
-                          <div className="mt-3 text-sm text-[#e8e8e8] font-light">{template.label}</div>
                           <div className="text-xs text-[#9d9d9d]">
                             {template.width.toLocaleString()} x {template.height.toLocaleString()} px
                           </div>
