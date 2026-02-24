@@ -155,6 +155,8 @@ interface RightSidebarProps {
   onImportFile: (file: File) => Promise<void> | void;
   onFlipCanvasHorizontal: () => void;
   onFlipCanvasVertical: () => void;
+  onFlipSelectedHorizontal: () => void;
+  onFlipSelectedVertical: () => void;
 }
 
 function ToolSpecsPanel({
@@ -335,6 +337,8 @@ export function RightSidebar({
   onImportFile,
   onFlipCanvasHorizontal,
   onFlipCanvasVertical,
+  onFlipSelectedHorizontal,
+  onFlipSelectedVertical,
 }: RightSidebarProps) {
   if (activeTool === "brush" || activeTool === "eraser") {
     return (
@@ -378,23 +382,6 @@ export function RightSidebar({
               }}
             />
           </label>
-          <div className="mt-5 text-[10px] text-[#737373] uppercase tracking-wider">Canvas</div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onFlipCanvasHorizontal}
-              className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
-            >
-              Flip H
-            </button>
-            <button
-              type="button"
-              onClick={onFlipCanvasVertical}
-              className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
-            >
-              Flip V
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -703,7 +690,10 @@ export function RightSidebar({
                     src={previewSrc}
                     alt={altText || title}
                     className="w-full h-full object-contain"
-                    style={{ filter: selectedNode.invertColors ? "invert(1)" : "none" }}
+                    style={{
+                      filter: selectedNode.invertColors ? "invert(1)" : "none",
+                      transform: `scale(${selectedNode.flipX ? -1 : 1}, ${selectedNode.flipY ? -1 : 1})`,
+                    }}
                   />
                 ) : (
                   <div className="text-[#737373] text-xs font-light">No thumbnail</div>
@@ -1104,27 +1094,29 @@ export function RightSidebar({
               className="w-full bg-transparent border border-white/10 text-[#fafafa] px-3 py-2 rounded-none text-sm font-light placeholder:text-[#737373] focus:border-white/20 focus:outline-none transition-colors"
             />
           </div>
-          <div className="mt-6 border-t border-white/10 pt-4">
-            <div className="text-[10px] text-[#737373] mb-3 uppercase tracking-wider font-light">
-              Canvas
+          {selectedNode.type === "image" && (
+            <div className="mt-6 border-t border-white/10 pt-4">
+              <div className="text-[10px] text-[#737373] mb-3 uppercase tracking-wider font-light">
+                Layer
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={onFlipSelectedHorizontal}
+                  className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                >
+                  Flip H
+                </button>
+                <button
+                  type="button"
+                  onClick={onFlipSelectedVertical}
+                  className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
+                >
+                  Flip V
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={onFlipCanvasHorizontal}
-                className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
-              >
-                Flip H
-              </button>
-              <button
-                type="button"
-                onClick={onFlipCanvasVertical}
-                className="h-8 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"
-              >
-                Flip V
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </ScrollArea>
     </div>

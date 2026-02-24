@@ -1647,6 +1647,25 @@ export default function App() {
     exportAspectRatioRef.current = nextWidth / Math.max(1, nextHeight);
   };
 
+  const flipSelectedImage = (axis: "horizontal" | "vertical") => {
+    if (!selectedNode || selectedNode.type !== "image") return;
+    recordHistory();
+    setCanvases((prev) =>
+      prev.map((canvas) => {
+        if (canvas.id !== currentCanvasId) return canvas;
+        return {
+          ...canvas,
+          nodes: canvas.nodes.map((node) => {
+            if (node.id !== selectedNode.id) return node;
+            return axis === "horizontal"
+              ? { ...node, flipX: !node.flipX }
+              : { ...node, flipY: !node.flipY };
+          }),
+        };
+      })
+    );
+  };
+
   const handleSelectStartTemplate = (templateId: StartTemplateId) => {
     setStartTemplate(templateId);
     setSelectedStartMoreSizeId(null);
@@ -1995,9 +2014,15 @@ export default function App() {
             /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(node.mediaUrl || "")) ||
           (node.thumbnail?.length ?? 0) > 0;
         if (isImage && imageSrc) {
-          parts.push(
-            `<image href="${escapeXml(imageSrc)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} />`
-          );
+          if (node.flipX || node.flipY) {
+            parts.push(
+              `<g transform="translate(${node.flipX ? x + w : x} ${node.flipY ? y + h : y}) scale(${node.flipX ? -1 : 1} ${node.flipY ? -1 : 1})"><image href="${escapeXml(imageSrc)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} /></g>`
+            );
+          } else {
+            parts.push(
+              `<image href="${escapeXml(imageSrc)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} />`
+            );
+          }
         } else {
           parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,255,255,0.08)"${hasEraseMask ? ` mask="url(#${nodeMaskId})"` : ""} />`);
           parts.push(
@@ -2184,7 +2209,14 @@ export default function App() {
               drawW = h * sourceRatio;
               drawX = (w - drawW) / 2;
             }
+            nodeCtx.save();
+            if (node.flipX || node.flipY) {
+              nodeCtx.translate(nodeCanvas.width / 2, nodeCanvas.height / 2);
+              nodeCtx.scale(node.flipX ? -1 : 1, node.flipY ? -1 : 1);
+              nodeCtx.translate(-nodeCanvas.width / 2, -nodeCanvas.height / 2);
+            }
             nodeCtx.drawImage(image, drawX, drawY, drawW, drawH);
+            nodeCtx.restore();
             applyFilterOpsToCanvas(nodeCanvas, nodeOps, includeFilters && Boolean(node.invertColors));
             applyNodeErasePathsToCanvas(
               nodeCtx,
@@ -3245,6 +3277,8 @@ export default function App() {
             }}
             onFlipCanvasHorizontal={() => flipCurrentCanvas("horizontal")}
             onFlipCanvasVertical={() => flipCurrentCanvas("vertical")}
+            onFlipSelectedHorizontal={() => flipSelectedImage("horizontal")}
+            onFlipSelectedVertical={() => flipSelectedImage("vertical")}
           />
         </div>
         )}
@@ -3366,6 +3400,8 @@ export default function App() {
                 }}
                 onFlipCanvasHorizontal={() => flipCurrentCanvas("horizontal")}
                 onFlipCanvasVertical={() => flipCurrentCanvas("vertical")}
+                onFlipSelectedHorizontal={() => flipSelectedImage("horizontal")}
+                onFlipSelectedVertical={() => flipSelectedImage("vertical")}
               />
             </div>
           </div>
@@ -4408,7 +4444,7 @@ export default function App() {
                       width: size.width,
                       height: size.height,
                       opacity: node.opacity ?? 1,
-                      transform: `rotate(${node.rotation ?? 0}deg)`,
+                      transform: `rotate(${node.rotation ?? 0}deg) scale(${node.flipX ? -1 : 1}, ${node.flipY ? -1 : 1})`,
                       transformOrigin: "center center",
                       overflow: "hidden",
                       background: "transparent",

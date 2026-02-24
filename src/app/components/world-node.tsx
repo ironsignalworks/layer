@@ -32,6 +32,8 @@ export interface NodeData {
   preset?: "zine" | "acid" | "retro" | "mono" | "neon" | "paper";
   opacity?: number;
   rotation?: number;
+  flipX?: boolean;
+  flipY?: boolean;
   invertColors?: boolean;
   motionReduced?: boolean;
   textStyle?: NodeTextStyle;
@@ -528,6 +530,7 @@ export function WorldNode({
                 preserveAspectRatio="xMidYMid meet"
                 opacity="0.8"
                 mask={`url(#${maskId})`}
+                transform={`translate(${node.flipX ? size.width : 0} ${node.flipY ? size.height : 0}) scale(${node.flipX ? -1 : 1} ${node.flipY ? -1 : 1})`}
                 style={{ filter: node.invertColors ? "invert(1)" : "none" }}
               />
             </svg>
@@ -537,7 +540,10 @@ export function WorldNode({
               alt={node.title}
               draggable={false}
               className="w-full h-full object-contain opacity-80"
-              style={{ filter: node.invertColors ? "invert(1)" : "none" }}
+              style={{
+                filter: node.invertColors ? "invert(1)" : "none",
+                transform: `scale(${node.flipX ? -1 : 1}, ${node.flipY ? -1 : 1})`,
+              }}
             />
           )
         ) : (
