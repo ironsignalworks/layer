@@ -2881,11 +2881,21 @@ export default function App() {
       )}
       {!isPlaying && (
       <div className="panel-3d print-hide relative flex-shrink-0 min-h-16 px-3 lg:px-0 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 lg:py-0 flex flex-col lg:flex-row lg:items-center gap-1 border-b border-white/5 bg-[#0a0a0a]">
-        <div
-          className="hidden lg:block absolute right-3 top-2 text-[10px] uppercase tracking-wider text-[#737373] pointer-events-none"
-          title="Click app name to change skin"
-        >
-          Skin: {uiSkinLabel}
+        <div className="hidden lg:flex absolute right-0 top-1 w-[20rem] flex-col items-center justify-center gap-1 px-2 py-1.5">
+          <div
+            className="w-full text-center text-[10px] uppercase tracking-[0.08em] text-[#8a8a8a] pointer-events-none"
+            title="Click app name to change skin"
+          >
+            Skin: <span className="text-[#b8b8b8]">{uiSkinLabel}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAbout(true)}
+            className="control-pill h-7 w-full px-2 border border-white/15 bg-white/[0.02] text-[#9a9a9a] hover:text-[#fafafa] hover:border-white/25 hover:bg-white/[0.06] transition-colors text-[10px] uppercase tracking-wider justify-center"
+          >
+            <Info className="w-3.5 h-3.5" />
+            About
+          </button>
         </div>
         <div className="flex items-center justify-between lg:basis-[16rem] lg:min-w-[16rem] lg:max-w-[16rem] lg:px-4">
           <div
@@ -3051,8 +3061,16 @@ export default function App() {
                 Redo
               </button>
               <button
+                type="button"
+                onClick={() => setShowAbout(true)}
+                className="control-pill lg:hidden order-10 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+              >
+                <Info />
+                About
+              </button>
+              <button
                 onClick={openExportPanel}
-                className="control-pill order-10 lg:order-8 col-span-3 lg:col-span-1 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
+                className="control-pill order-12 lg:order-2 col-span-3 lg:col-span-1 w-full min-w-0 border border-white/20 bg-white/5 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors"
               >
                 <Download />
                 Download
@@ -3064,7 +3082,7 @@ export default function App() {
                 <Printer />
                 Print
               </button>
-              <label className="control-pill order-11 lg:order-2 col-span-3 lg:col-span-1 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-1 overflow-hidden">
+              <label className="control-pill order-11 lg:order-8 col-span-3 lg:col-span-1 w-full min-w-0 border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] hover:border-white/30 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-1 overflow-hidden">
                 <Upload className="w-4 h-4" />
                 Import
                 <input
@@ -3131,9 +3149,9 @@ export default function App() {
             onAddLayer={handleAddNode}
             onAddTextLayer={handleAddTextLayer}
             onImportFont={handleImportFont}
+            onImportFile={handleHeaderUpload}
             zoomLevel={zoomLevel}
             onZoomChange={handleZoomChange}
-            onOpenAbout={() => setShowAbout(true)}
           />
         </div>
         )}
@@ -3297,9 +3315,9 @@ export default function App() {
                 onAddLayer={handleAddNode}
                 onAddTextLayer={handleAddTextLayer}
                 onImportFont={handleImportFont}
+                onImportFile={handleHeaderUpload}
                 zoomLevel={zoomLevel}
                 onZoomChange={handleZoomChange}
-                onOpenAbout={() => setShowAbout(true)}
               />
             </div>
           </div>
@@ -4180,8 +4198,8 @@ export default function App() {
                   Layer
                 </span>
                 <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-[#737373]">About</div>
-                  <div className="text-sm sm:text-lg text-[#fafafa] font-light mt-1 leading-tight">Product Overview</div>
+                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">About</div>
+                  <div className="text-base sm:text-xl text-[#fafafa] font-light mt-1 leading-tight">Product Overview</div>
                 </div>
               </div>
               <button
@@ -4194,30 +4212,30 @@ export default function App() {
               </button>
             </div>
             <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[0.75fr_1.25fr] gap-3 sm:gap-4 lg:gap-5 overflow-y-auto xl:overflow-hidden">
-              <div className="border border-white/10 p-4 flex flex-col gap-4 min-h-0">
+              <div className="border border-white/15 p-4 flex flex-col gap-4 min-h-0">
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Layer - Image + Text Editor</div>
-                  <div className="text-sm text-[#a8a8a8] leading-relaxed">
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Layer - Image + Text Editor</div>
+                  <div className="text-[15px] text-[#e3e3e3] leading-relaxed">
                     A fast, layered canvas studio for collage, typography, paint, and export workflows in one place.
                   </div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#737373]">
+                  <div className="text-[11px] uppercase tracking-wider text-[#b8b8b8]">
                     Build, edit, and publish without leaving the canvas.
                   </div>
                 </div>
                 <div className="space-y-2 border border-white/10 p-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Skin</div>
-                    <div className="text-[10px] uppercase tracking-wider text-[#737373]">Current: {uiSkinLabel}</div>
+                    <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Skin</div>
+                    <div className="text-[11px] uppercase tracking-wider text-[#b8b8b8]">Current: {uiSkinLabel}</div>
                   </div>
-                  <div className="text-[10px] text-[#737373] uppercase tracking-wider">
+                  <div className="text-[11px] text-[#b8b8b8] uppercase tracking-wider">
                     Tip: click app name in the header to cycle skins.
                   </div>
                 </div>
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Key Shortcuts</div>
-                  <div className="text-sm text-[#9a9a9a] leading-relaxed">`V` Select, `B` Brush, `E` Eraser</div>
-                  <div className="text-sm text-[#9a9a9a] leading-relaxed">`Cmd/Ctrl+Z` Undo, `Shift+Cmd/Ctrl+Z` Redo</div>
-                  <div className="text-sm text-[#9a9a9a] leading-relaxed">`Cmd/Ctrl+D` Duplicate, `Delete/Backspace` Remove</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Key Shortcuts</div>
+                  <div className="text-[15px] text-[#d8d8d8] leading-relaxed">`V` Select, `B` Brush, `E` Eraser</div>
+                  <div className="text-[15px] text-[#d8d8d8] leading-relaxed">`Cmd/Ctrl+Z` Undo, `Shift+Cmd/Ctrl+Z` Redo</div>
+                  <div className="text-[15px] text-[#d8d8d8] leading-relaxed">`Cmd/Ctrl+D` Duplicate, `Delete/Backspace` Remove</div>
                 </div>
                 <div className="mt-auto pt-3 border-t border-white/10 flex items-center justify-end">
                   <button
@@ -4230,16 +4248,16 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="border border-white/10 min-h-0 xl:overflow-y-auto p-4 space-y-4 text-sm text-[#9a9a9a] leading-relaxed">
+              <div className="border border-white/15 min-h-0 xl:overflow-y-auto p-4 space-y-4 text-[15px] text-[#d6d6d6] leading-relaxed">
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Canvas + Layers</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Canvas + Layers</div>
                   <div>Create, rename, and delete canvases from the left panel. Blank names auto-generate as canvas1, canvas2, and so on.</div>
                   <div>Set canvas preset/background, toggle layer visibility, drag to reorder, double-click a layer to rename, and use layer delete controls.</div>
                   <div>Arrow keys move selected items on canvas. Shift+drag enables box select.</div>
                 </div>
 
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Tools</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Tools</div>
                   <div>Left Tools panel includes Select, Brush, Eraser, Add Layer, Add Text, Import Font, and zoom controls.</div>
                   <div>Brush creates stroke layers and supports size, opacity, shape (round/square/triangle), and color.</div>
                   <div>Eraser supports size, opacity, and shape. Ghost pointers show active brush/eraser size on canvas.</div>
@@ -4247,26 +4265,26 @@ export default function App() {
                 </div>
 
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Inspector</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Inspector</div>
                   <div>Inspector updates by selection: media preview, title/description, URLs, tags, alt text, transparency, invert, presets, and text styling controls.</div>
                   <div>Text tools include font picker, color, size, weight/style/underline, and alignment.</div>
                 </div>
 
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Edit + Navigation</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Edit + Navigation</div>
                   <div>Pan by dragging empty space. Zoom with wheel or zoom controls. Double-click export preview to reset zoom/pan.</div>
                   <div>Projects are auto-saved locally in your browser.</div>
                 </div>
 
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Export + Output</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Export + Output</div>
                   <div>Export supports PNG, JPEG, WEBP, SVG, ICO, AVIF, GIF, and HEIC with resolution scaling, templates, explicit width/height, and optional filter inclusion.</div>
                   <div>Final Pass modes: None, Threshold, Bitmap, Posterize, Duotone with intensity control (raster exports only).</div>
                   <div>Use Export Snip, Download, Share Image Link with QR, and Print from the top controls.</div>
                 </div>
 
                 <div className="border border-white/10 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider text-[#bdbdbd]">Import</div>
+                  <div className="text-xs uppercase tracking-wider text-[#e2e2e2]">Import</div>
                   <div>Main import is in the left footer. You can also drag/drop supported files directly onto the canvas.</div>
                 </div>
               </div>
