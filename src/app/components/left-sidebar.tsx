@@ -130,33 +130,33 @@ export function LeftSidebar({
 
       {/* Canvas Selector */}
       <div className="relative z-40 flex-shrink-0 px-4 py-3 border-b border-white/5 overflow-visible">
-        <label className="text-[10px] text-[#737373] mb-2 block uppercase tracking-wider font-light">
-          Canvas
-        </label>
-        <label className="control-pill mb-2 w-full h-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 cursor-pointer overflow-hidden">
-          <Upload />
-          Import
-          <input
-            type="file"
-            accept="image/*,text/plain,application/json,.csv,.md"
-            className="hidden"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              await onImportFile(file);
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={onDownload}
-          className="control-pill mb-2 w-full h-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden"
-        >
-          <Download />
-          Download
-        </button>
-        <>
+        <div className="flex flex-col gap-1">
+          <label className="control-pill w-full h-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 cursor-pointer overflow-hidden">
+            <Upload />
+            Import
+            <input
+              type="file"
+              accept="image/*,text/plain,application/json,.csv,.md"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                await onImportFile(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={onDownload}
+            className="control-pill w-full h-10 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 text-[10px] uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1 overflow-hidden"
+          >
+            <Download />
+            Download
+          </button>
+          <label className="text-[10px] text-[#737373] uppercase tracking-wider font-light">
+            Project
+          </label>
           <div className="relative w-full overflow-visible z-20" ref={canvasMenuRef}>
             {isRenaming ? (
               <input
@@ -215,7 +215,7 @@ export function LeftSidebar({
               </>
             )}
           </div>
-          <div className="mt-1 grid grid-cols-[minmax(0,1fr)_2.2rem_2.2rem] items-center gap-1 overflow-hidden w-full">
+          <div className="grid grid-cols-[minmax(0,1fr)_2.2rem_2.2rem] items-center gap-1 overflow-hidden w-full">
             <button
               onClick={() => {
                 onCreateCanvas();
@@ -244,7 +244,7 @@ export function LeftSidebar({
               <Trash2 />
             </button>
           </div>
-        </>
+        </div>
       </div>
 
       {/* Layers */}
