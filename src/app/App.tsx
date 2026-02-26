@@ -3576,7 +3576,7 @@ export default function App() {
                 rel="noreferrer"
                 className="h-9 px-3 rounded-none border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] bg-white/10 hover:bg-white/15 transition-colors inline-flex items-center"
               >
-                Support Development
+                Help keep this free
               </a>
             </div>
           </div>
@@ -4028,7 +4028,15 @@ export default function App() {
                   Estimated File Size: {exportEstimatedBytes !== null ? formatBytes(exportEstimatedBytes) : "Calculating..."}
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-1">
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <a
+                    href={DONATION_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-9 px-3 rounded-none border border-white/10 text-[10px] tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors inline-flex items-center"
+                  >
+                    Help keep this free
+                  </a>
                   <button
                     onClick={() => setShowExport(false)}
                     className="h-9 px-3 rounded-none border border-white/10 text-[10px] uppercase tracking-wider text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors"

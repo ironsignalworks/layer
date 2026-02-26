@@ -543,21 +543,16 @@ export function LeftSidebar({
 
       <div className="panel-3d flex-shrink-0 px-4 py-2 border-t border-white/5">
         <div className="flex flex-col items-stretch gap-1">
-          <label className="control-pill w-full h-14 px-2 border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors cursor-pointer flex items-center justify-center gap-1 uppercase tracking-wider text-[10px] overflow-hidden">
-            <Upload className="w-4 h-4" />
-            Import
-            <input
-              type="file"
-              accept="image/*,text/plain,application/json,.csv,.md"
-              className="hidden"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                await onImportFile(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
+          <div className="text-center">
+            <a
+              href="https://donate.stripe.com/4gMdR25le5GXenHbrT5Ne00"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-7 items-center justify-center px-2 border border-white/20 bg-white/10 text-[8px] tracking-[0.16em] text-[#fafafa] hover:bg-white/15 hover:border-white/30 transition-colors"
+            >
+              HELP KEEP THIS FREE
+            </a>
+          </div>
           <div className="layer-subtitle text-[8px] text-[#737373] text-center whitespace-nowrap">
             <a href="https://ironsignalworks.com" target="_blank" rel="noreferrer">
               IRON SIGNAL WORKS
