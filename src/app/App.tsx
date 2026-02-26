@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { LeftSidebar } from "./components/left-sidebar";
 import { RightSidebar } from "./components/right-sidebar";
 import { WorldCanvas } from "./components/world-canvas";
@@ -726,8 +726,9 @@ export default function App() {
   const [startTemplate, setStartTemplate] = useState<StartTemplateId>("instagram-square");
   const [isStartMoreSizesOpen, setIsStartMoreSizesOpen] = useState(false);
   const [selectedStartMoreSizeId, setSelectedStartMoreSizeId] = useState<StartMoreSizeId | null>(null);
-  const [startWidth, setStartWidth] = useState(1080);
-  const [startHeight, setStartHeight] = useState(1080);
+  const [startWidthInput, setStartWidthInput] = useState("1080");
+  const [startHeightInput, setStartHeightInput] = useState("1080");
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeTool, setActiveTool] = useState<"select" | "brush" | "eraser">("select");
   const [historyLog, setHistoryLog] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">("saved");
@@ -781,11 +782,11 @@ export default function App() {
   const onboardingTotal = ONBOARDING_STEPS.length;
   const isOnboardingLastStep = onboardingStep >= onboardingTotal - 1;
   const activeOnboardingStep = ONBOARDING_STEPS[Math.min(onboardingStep, onboardingTotal - 1)];
-  const completeOnboarding = () => {
+  const completeOnboarding = useCallback(() => {
     localStorage.setItem(ONBOARDING_KEY, "done");
     setShowOnboarding(false);
     setOnboardingStep(0);
-  };
+  }, []);
 
   const handleNukeAndRestart = async () => {
     const shouldProceed = window.confirm(
@@ -1672,8 +1673,8 @@ export default function App() {
     setSelectedStartMoreSizeId(null);
     const selected = START_TEMPLATES.find((template) => template.id === templateId);
     if (!selected) return;
-    setStartWidth(Math.max(16, Math.round(selected.width)));
-    setStartHeight(Math.max(16, Math.round(selected.height)));
+    setStartWidthInput(String(Math.max(0, Math.round(selected.width))));
+    setStartHeightInput(String(Math.max(0, Math.round(selected.height))));
   };
 
   const handleSelectStartMoreSize = (sizeId: StartMoreSizeId) => {
@@ -1681,14 +1682,16 @@ export default function App() {
     if (!selected) return;
     setStartTemplate("custom");
     setSelectedStartMoreSizeId(sizeId);
-    setStartWidth(Math.max(16, Math.round(selected.width)));
-    setStartHeight(Math.max(16, Math.round(selected.height)));
+    setStartWidthInput(String(Math.max(0, Math.round(selected.width))));
+    setStartHeightInput(String(Math.max(0, Math.round(selected.height))));
     setIsStartMoreSizesOpen(false);
   };
 
   const applyStartTemplate = () => {
-    const width = Math.max(16, Math.round(startWidth) || 16);
-    const height = Math.max(16, Math.round(startHeight) || 16);
+    const parsedWidth = Number(startWidthInput);
+    const parsedHeight = Number(startHeightInput);
+    const width = Math.max(1, Math.round(Number.isFinite(parsedWidth) ? parsedWidth : 0));
+    const height = Math.max(1, Math.round(Number.isFinite(parsedHeight) ? parsedHeight : 0));
     const exportTemplateMatch = EXPORT_TEMPLATES.find(
       (template) => template.width === width && template.height === height
     );
@@ -1701,9 +1704,9 @@ export default function App() {
       y: 0,
       width,
       height,
-      enabled: false,
+      enabled: true,
     });
-    setShowPrintArea(false);
+    setShowPrintArea(true);
     setIsStartMoreSizesOpen(false);
     const nextName = startProjectName.trim();
     if (nextName) {
@@ -2791,6 +2794,11 @@ export default function App() {
         handleAddNode();
         return;
       }
+      if (isMeta && event.key.toLowerCase() === "o") {
+        event.preventDefault();
+        importFileInputRef.current?.click();
+        return;
+      }
       const key = event.key.toLowerCase();
       if (key === "v") {
         event.preventDefault();
@@ -2847,6 +2855,7 @@ export default function App() {
     showStartModal,
     showOnboarding,
     expandedNodeId,
+    importFileInputRef,
   ]);
 
   const filteredNodes = useMemo(() => {
@@ -3115,6 +3124,7 @@ export default function App() {
                 <Upload className="w-4 h-4" />
                 Import
                 <input
+                  ref={importFileInputRef}
                   type="file"
                   accept="image/*,text/plain,application/json,.csv,.md"
                   className="hidden"
@@ -4117,12 +4127,12 @@ export default function App() {
                     <label className="text-[10px] uppercase tracking-wider text-[#737373] mb-1 block">Width</label>
                     <input
                       type="number"
-                      min="16"
-                      value={startWidth}
+                      min="0"
+                      value={startWidthInput}
                       onChange={(event) => {
                         setStartTemplate("custom");
                         setSelectedStartMoreSizeId(null);
-                        setStartWidth(Math.max(16, Math.round(Number(event.target.value)) || 16));
+                        setStartWidthInput(event.target.value);
                       }}
                       className="w-full h-10 bg-transparent border border-white/10 text-[#fafafa] px-3 rounded-none text-base font-light focus:border-white/20 focus:outline-none"
                     />
@@ -4132,8 +4142,8 @@ export default function App() {
                     onClick={() => {
                       setStartTemplate("custom");
                       setSelectedStartMoreSizeId(null);
-                      setStartWidth((prev) => Math.max(16, Math.round(startHeight) || prev));
-                      setStartHeight((prev) => Math.max(16, Math.round(startWidth) || prev));
+                      setStartWidthInput(startHeightInput);
+                      setStartHeightInput(startWidthInput);
                     }}
                     className="h-10 rounded-none border border-white/10 text-[#737373] hover:text-[#fafafa] hover:border-white/20 transition-colors flex items-center justify-center"
                     aria-label="Swap width and height"
@@ -4144,12 +4154,12 @@ export default function App() {
                     <label className="text-[10px] uppercase tracking-wider text-[#737373] mb-1 block">Height</label>
                     <input
                       type="number"
-                      min="16"
-                      value={startHeight}
+                      min="0"
+                      value={startHeightInput}
                       onChange={(event) => {
                         setStartTemplate("custom");
                         setSelectedStartMoreSizeId(null);
-                        setStartHeight(Math.max(16, Math.round(Number(event.target.value)) || 16));
+                        setStartHeightInput(event.target.value);
                       }}
                       className="w-full h-10 bg-transparent border border-white/10 text-[#fafafa] px-3 rounded-none text-base font-light focus:border-white/20 focus:outline-none"
                     />
