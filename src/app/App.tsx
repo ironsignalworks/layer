@@ -3991,7 +3991,7 @@ export default function App() {
                         onChange={(event) =>
                           setExportFinalPassAmount(Math.max(0, Math.min(1, Number(event.target.value) / 100)))
                         }
-                        className="w-full h-0.5 bg-white/10 appearance-none cursor-pointer disabled:opacity-40 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
+                        className="compact-range w-full h-0.5 bg-white/10 appearance-none cursor-pointer disabled:opacity-40"
                       />
                     </div>
                   </div>
@@ -4016,7 +4016,7 @@ export default function App() {
                       max="100"
                       value={Math.round(exportQuality * 100)}
                       onChange={(event) => setExportQuality(Math.max(0.5, Math.min(1, Number(event.target.value) / 100)))}
-                      className="w-full h-0.5 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer"
+                      className="compact-range w-full h-0.5 bg-white/10 appearance-none cursor-pointer"
                     />
                   </div>
                 )}
@@ -4264,7 +4264,10 @@ export default function App() {
       )}
 
       {showAbout && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 sm:p-4">
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 sm:p-4"
+          onClick={() => setShowAbout(false)}
+        >
           <div
             ref={aboutModalRef}
             role="dialog"
@@ -4272,6 +4275,7 @@ export default function App() {
             aria-label="About Layer"
             tabIndex={-1}
             className="panel-3d w-[1240px] max-w-[98vw] h-[96vh] sm:h-[92vh] max-h-[98vh] sm:max-h-[96vh] bg-[#0a0a0a] border border-white/10 rounded-none p-3 sm:p-6 lg:p-8 flex flex-col overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
               <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0">
@@ -4317,15 +4321,6 @@ export default function App() {
                   <div className="text-[15px] text-[#d8d8d8] leading-relaxed">`V` Select, `B` Brush, `E` Eraser</div>
                   <div className="text-[15px] text-[#d8d8d8] leading-relaxed">`Cmd/Ctrl+Z` Undo, `Shift+Cmd/Ctrl+Z` Redo</div>
                   <div className="text-[15px] text-[#d8d8d8] leading-relaxed">`Cmd/Ctrl+D` Duplicate, `Delete/Backspace` Remove</div>
-                </div>
-                <div className="mt-auto pt-3 border-t border-white/10 flex items-center justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowAbout(false)}
-                    className="h-10 px-4 rounded-none border border-white/20 text-[10px] uppercase tracking-wider text-[#fafafa] bg-white/10 hover:bg-white/15 transition-colors"
-                  >
-                    Close
-                  </button>
                 </div>
               </div>
 
