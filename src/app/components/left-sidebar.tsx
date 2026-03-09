@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Layers, ChevronDown, Plus, Type, Pencil, Trash2, Eye, EyeOff, Eraser, MousePointer2, Upload, ZoomIn, Image as ImageIcon, Download } from "lucide-react";
 import { ScrollArea } from "../components/ui/scroll-area";
 

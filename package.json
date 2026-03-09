@@ -6,6 +6,10 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
+    "audit": "npm audit --omit=dev",
     "deploy": "npm run build"
   },
   "dependencies": {
@@ -68,7 +72,16 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
+    "@typescript-eslint/eslint-plugin": "8.56.1",
+    "@typescript-eslint/parser": "8.56.1",
+    "eslint": "10.0.3",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "prettier": "3.8.1",
     "tailwindcss": "4.1.12",
+    "typescript": "5.9.3",
     "vite": "^6.4.1"
   },
   "peerDependencies": {
